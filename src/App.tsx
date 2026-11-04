@@ -105,7 +105,7 @@ function StorePage({ onAction }: { onAction: PageAction }) {
   return <section className="screen active" id="store"><PageTitle eyebrow="THE ROYAL COLLECTION" title="المتجر الملكي ♛" description="اختار حاجة تليق بحضورك." /><div className="store-tabs">{categories.map((item) => <button className={category === item ? "selected" : ""} key={item} type="button" onClick={() => setCategory(item)}>{item}</button>)}</div><div className="gift-grid">{gifts.map((gift) => <div className="gift-card" key={gift.name}><div className={`gift-art ${gift.cls}`}>{gift.symbol}</div><b>{gift.name}</b><small>{gift.price}</small><button type="button" onClick={() => onAction("gift", gift.name, "إرسال الهدايا وخصم الرصيد مش مفعّلين قبل ربط المحفظة الآمنة.")}>اختار الهدية</button></div>)}</div></section>;
 }
 
-function SettingsPage({ navigate, onAction, onLogout }: { navigate: (id: ScreenId) => void; onAction: PageAction; onLogout: () => void }) {
+function SettingsPage({ navigate, onLogout }: { navigate: (id: ScreenId) => void; onLogout: () => void }) {
   return <section className="screen active" id="settings"><div className="page-title"><span className="eyebrow">MAKE IT YOURS</span><h1>الإعدادات</h1></div><div className="settings-list"><label><span>إخفاء حالة الاتصال</span><input type="checkbox" /></label><label><span>السماح برسائل الأصدقاء فقط</span><input type="checkbox" defaultChecked /></label><label><span>أصوات الهدايا المميزة</span><input type="checkbox" defaultChecked /></label><label><span>الوضع الملكي الداكن</span><input type="checkbox" defaultChecked /></label><button type="button" onClick={() => navigate("support")}>مركز المساعدة والدعم ←</button><button className="danger" type="button" onClick={onLogout}>تسجيل الخروج</button></div></section>;
 }
 
@@ -216,7 +216,7 @@ export default function App() {
         {screen === "profile" ? <ProfilePage navigate={navigate} onAction={onAction} /> : null}
         {screen === "wallet" ? <WalletPage onAction={onAction} /> : null}
         {screen === "store" ? <StorePage onAction={onAction} /> : null}
-        {screen === "settings" ? <SettingsPage navigate={navigate} onAction={onAction} onLogout={logout} /> : null}
+        {screen === "settings" ? <SettingsPage navigate={navigate} onLogout={logout} /> : null}
         {screen === "support" ? <SupportPage onAction={onAction} /> : null}
       </main>
     </div>
