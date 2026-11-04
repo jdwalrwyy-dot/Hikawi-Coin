@@ -1,6 +1,6 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { getAuth, type User } from "firebase/auth";
-import { doc, getFirestore, serverTimestamp, setDoc } from "firebase/firestore";
+import { addDoc, collection, doc, getFirestore, onSnapshot, serverTimestamp, setDoc, type Unsubscribe } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -26,5 +26,60 @@ export async function saveUserProfile(user: User): Promise<void> {
     phoneNumber: user.phoneNumber ?? null,
     lastSignInAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
+  }, { merge: true });
+}
+
+
+export interface LiveRoomRecord {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  ownerUid: string;
+  ownerName: string;
+  visibility: "public" | "private";
+  createdAt?: unknown;
+}
+
+export function subscribePublicRooms(onRooms: (rooms: LiveRoomRecord[]) => void, onError: (error: Error) => void): Unsubscribe {
+  if (!db) throw new Error("Firebase غير مُعدّ بعد.");
+  return onSnapshot(collection(db, "rooms"), (snapshot) => {
+    const rooms = snapshot.docs
+      .map((item) => ({ id: item.id, ...item.data() } as LiveRoomRecord))
+      .filter((room) => room.visibility === "public");
+    onRooms(rooms);
+  }, (error) => onError(error));
+}
+
+export async function createLiveRoom(input: { name: string; description: string; category: string; user: User }): Promise<string> {
+  if (!db) throw new Error("Firebase غير مُعدّ بعد.");
+  const name = input.name.trim();
+  if (name.length < 3 || name.length > 40) throw new Error("اسم الغرفة لازم يكون من 3 إلى 40 حرف.");
+  const ref = await addDoc(collection(db, "rooms"), {
+    name,
+    description: input.description.trim().slice(0, 160),
+    category: input.category,
+    ownerUid: input.user.uid,
+    ownerName: input.user.displayName || "عضو حكاوي",
+    visibility: "public",
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  await setDoc(doc(db, "rooms", ref.id, "members", input.user.uid), {
+    uid: input.user.uid,
+    displayName: input.user.displayName || "عضو حكاوي",
+    joinedAt: serverTimestamp(),
+    role: "owner",
+  });
+  return ref.id;
+}
+
+export async function joinLiveRoom(roomId: string, user: User): Promise<void> {
+  if (!db) throw new Error("Firebase غير مُعدّ بعد.");
+  await setDoc(doc(db, "rooms", roomId, "members", user.uid), {
+    uid: user.uid,
+    displayName: user.displayName || "عضو حكاوي",
+    joinedAt: serverTimestamp(),
+    role: "member",
   }, { merge: true });
 }
