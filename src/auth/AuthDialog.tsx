@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { GoogleAuthProvider, RecaptchaVerifier, signInWithPhoneNumber, signInWithPopup, type ConfirmationResult } from "firebase/auth";
 import { auth } from "../firebase";
 
-interface AuthDialogProps { onClose: () => void; configured: boolean; }
+interface AuthDialogProps { onClose: () => void; configured: boolean; mode?: "login" | "register"; }
 function readableError(error: unknown): string {
   if (!(error instanceof Error)) return "حصل خطأ غير متوقع. حاول تاني.";
   const code = "code" in error && typeof error.code === "string" ? error.code : "";
@@ -16,7 +16,7 @@ function readableError(error: unknown): string {
   };
   return messages[code] ?? "تعذر تسجيل الدخول. راجع إعدادات Firebase وحاول مرة أخرى.";
 }
-export default function AuthDialog({ onClose, configured }: AuthDialogProps) {
+export default function AuthDialog({ onClose, configured, mode = "login" }: AuthDialogProps) {
   const [phone,setPhone]=useState("+20"); const [code,setCode]=useState("");
   const [confirmation,setConfirmation]=useState<ConfirmationResult|null>(null);
   const [busy,setBusy]=useState(false); const [error,setError]=useState(""); const [success,setSuccess]=useState("");
@@ -40,8 +40,8 @@ export default function AuthDialog({ onClose, configured }: AuthDialogProps) {
   return <div className="modal-backdrop" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget)onClose();}}>
     <section className="modal auth-dialog" role="dialog" aria-modal="true" aria-labelledby="auth-title">
       <button className="auth-close" type="button" onClick={onClose} aria-label="إغلاق">×</button>
-      <div className="modal-symbol">♛</div><h2 id="auth-title">أهلاً بيك في حكاوي كوين</h2>
-      <p className="auth-intro">سجّل دخولك عشان تحتفظ بحسابك وتبدأ حكايتك.</p>
+      <div className="modal-symbol">♛</div><h2 id="auth-title">{mode === "register" ? "إنشاء حساب في حكاوي كوين" : "أهلاً بيك في حكاوي كوين"}</h2>
+      <p className="auth-intro">{mode === "register" ? "اختار Google أو رقم الموبايل لإنشاء حسابك والبدء." : "سجّل دخولك عشان تحتفظ بحسابك وتبدأ حكايتك."}</p>
       {!configured?<p className="auth-error">تسجيل الدخول مش متاح لسه: إعدادات Firebase الخاصة بالمشروع لم تُضف. أضف القيم الموجودة في ملف .env.example إلى إعدادات بيئة التشغيل.</p>:<>
         <button className="auth-action primary" type="button" disabled={busy} onClick={()=>void googleLogin()}>◉　المتابعة باستخدام Google</button>
         <div className="auth-divider">أو رقم الموبايل</div>
