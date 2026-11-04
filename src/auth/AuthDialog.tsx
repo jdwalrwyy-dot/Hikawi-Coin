@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { GoogleAuthProvider, RecaptchaVerifier, getRedirectResult, signInWithPhoneNumber, signInWithRedirect, type ConfirmationResult, type UserCredential } from "firebase/auth";
+import { GoogleAuthProvider, RecaptchaVerifier, signInWithPhoneNumber, signInWithRedirect, type ConfirmationResult } from "firebase/auth";
 import { auth } from "../firebase";
 
 interface AuthDialogProps { onClose: () => void; configured: boolean; mode?: "login" | "register"; }
@@ -24,7 +24,7 @@ export default function AuthDialog({ onClose, configured, mode = "login" }: Auth
   const [confirmation,setConfirmation]=useState<ConfirmationResult|null>(null);
   const [busy,setBusy]=useState(false); const [error,setError]=useState(""); const [success,setSuccess]=useState("");
   const verifier=useRef<RecaptchaVerifier|null>(null);
-  useEffect(()=>{ if(!auth)return; let active=true; getRedirectResult(auth).then((result: UserCredential | null)=>{ if(active && result) { setSuccess("تم تسجيل الدخول بنجاح."); window.setTimeout(onClose,500); } }).catch((cause: unknown)=>{ if(active)setError(readableError(cause)); }); return ()=>{active=false;verifier.current?.clear();}; },[onClose]);
+  useEffect(()=>()=>{verifier.current?.clear();},[]);
   async function googleLogin() {
     if (!auth) {
       setError("تسجيل الدخول غير جاهز: إعدادات Firebase ناقصة. راجع إعدادات المشروع.");
