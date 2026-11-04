@@ -157,7 +157,10 @@ export default function App() {
     if (!auth) return undefined;
     return onAuthStateChanged(auth, (user) => {
       setAuthUser(user);
-      if (user) void saveUserProfile(user).catch((error: unknown) => console.error("تعذر حفظ الملف الشخصي:", error));
+      if (user) {
+        setAuthOpen(false);
+        void saveUserProfile(user).catch((error: unknown) => console.error("تعذر حفظ الملف الشخصي:", error));
+      }
     });
   }, []);
   useEffect(() => { if (!toast) return undefined; const timer = window.setTimeout(() => setToast(""), 2300); return () => window.clearTimeout(timer); }, [toast]);
