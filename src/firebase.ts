@@ -1,6 +1,6 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { getAuth, type User } from "firebase/auth";
-import { addDoc, collection, doc, getFirestore, onSnapshot, query, serverTimestamp, setDoc, where, type Unsubscribe } from "firebase/firestore";
+import { addDoc, collection, doc, getDoc, getFirestore, onSnapshot, query, serverTimestamp, setDoc, where, type Unsubscribe } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -76,10 +76,24 @@ export async function createLiveRoom(input: { name: string; description: string;
 
 export async function joinLiveRoom(roomId: string, user: User): Promise<void> {
   if (!db) throw new Error("Firebase غير مُعدّ بعد.");
-  await setDoc(doc(db, "rooms", roomId, "members", user.uid), {
+  const roomRef = doc(db, "rooms", roomId);
+  const roomSnapshot = await getDoc(roomRef);
+  if (!roomSnapshot.exists() || roomSnapshot.data().visibility !== "public") {
+    throw new Error("الغرفة غير موجودة أو غير متاحة.");
+  }
+  const membershipRef = doc(db, "rooms", roomId, "members", user.uid);
+  const membershipSnapshot = await getDoc(membershipRef);
+  const membershipData = {
     uid: user.uid,
     displayName: user.displayName || "عضو حكاوي",
     joinedAt: serverTimestamp(),
-    role: "member",
-  }, { merge: true });
+  };
+  if (membershipSnapshot.exists()) {
+    await setDoc(membershipRef, membershipData, { merge: true });
+  } else {
+    await setDoc(membershipRef, {
+      ...membershipData,
+      role: roomSnapshot.data().ownerUid === user.uid ? "owner" : "member",
+    });
+  }
 }
