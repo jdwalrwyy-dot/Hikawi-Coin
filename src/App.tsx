@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { getRedirectResult, onAuthStateChanged, signOut, type User } from "firebase/auth";
+import { onAuthStateChanged, signOut, type User } from "firebase/auth";
 import { auth, isFirebaseConfigured, saveUserProfile } from "./firebase";
 import AuthDialog from "./auth/AuthDialog";
 import { navItems, type PageAction, type Room, type ScreenId } from "./data";
@@ -135,7 +135,7 @@ function WelcomePage({ onLogin, onRegister }: { onLogin: () => void; onRegister:
       <button className="welcome-primary" type="button" onClick={onLogin}><span>♟</span> تسجيل الدخول</button>
       <button className="welcome-secondary" type="button" onClick={onRegister}><span>⊕</span> إنشاء حساب جديد</button>
       <div className="welcome-or"><span /> أو <span /></div>
-      <button className="welcome-google" type="button" onClick={onLogin}><b>G</b> المتابعة باستخدام Google</button>
+      
       <p>بمواصلة استخدامك للتطبيق فإنك توافق على <a href="/terms.html">شروط الاستخدام</a> و<a href="/privacy.html">سياسة الخصوصية</a>.</p>
     </section>
   </main>;
@@ -153,16 +153,6 @@ export default function App() {
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState("");
   useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, [screen]);
-  useEffect(() => {
-    if (!auth) return undefined;
-    let active = true;
-    getRedirectResult(auth).then((result) => {
-      if (active && result) setToast("تم تسجيل الدخول باستخدام Google بنجاح.");
-    }).catch((error: unknown) => {
-      if (active) setToast(error instanceof Error ? error.message : "تعذر إكمال تسجيل الدخول باستخدام Google.");
-    });
-    return () => { active = false; };
-  }, []);
   useEffect(() => {
     if (!auth) return undefined;
     return onAuthStateChanged(auth, (user) => {
