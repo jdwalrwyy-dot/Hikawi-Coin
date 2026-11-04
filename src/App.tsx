@@ -1,4 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { onAuthStateChanged, type User } from "firebase/auth";
+import { auth, isFirebaseConfigured, saveUserProfile } from "./firebase";
+import AuthDialog from "./auth/AuthDialog";
 import { demoRooms, navItems, type PageAction, type Room, type ScreenId } from "./data";
 
 interface ModalInfo { title: string; message: string; }
@@ -115,11 +118,20 @@ function AppModal({ info, onClose }: { info: ModalInfo; onClose: () => void }) {
 
 export default function App() {
   const [screen, setScreen] = useState<ScreenId>("home");
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [authOpen, setAuthOpen] = useState(false);
   const [modal, setModal] = useState<ModalInfo | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState("");
   useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, [screen]);
+  useEffect(() => {
+    if (!auth) return undefined;
+    return onAuthStateChanged(auth, (user) => {
+      setAuthUser(user);
+      if (user) void saveUserProfile(user).catch((error: unknown) => console.error("تعذر حفظ الملف الشخصي:", error));
+    });
+  }, []);
   useEffect(() => { if (!toast) return undefined; const timer = window.setTimeout(() => setToast(""), 2300); return () => window.clearTimeout(timer); }, [toast]);
   const onAction: PageAction = (_action, title, message) => setModal({ title: title ?? "حكاوي كوين", message: message ?? "الميزة دي هتتجهز في مرحلة لاحقة." });
   const navigate = (next: ScreenId) => { setScreen(next); setSearchOpen(false); };
@@ -133,7 +145,7 @@ export default function App() {
           <button className="icon-btn" type="button" onClick={() => setSearchOpen((value) => !value)} aria-label="بحث">⌕</button>
           <button className="wallet-pill" type="button" onClick={() => navigate("wallet")}><span>◆</span><b>12,850</b><small>كوين</small><i>＋</i></button>
           <button className="icon-btn notification-btn" type="button" onClick={() => setModal({ title: "إشعاراتك", message: "هنا هتظهر رسائل الأصدقاء ودعوات الغرف وتنبيهات حكاوي كوين." })} aria-label="الإشعارات">♧<i /></button>
-          <button className="mini-avatar" type="button" onClick={() => navigate("profile")} aria-label="حسابي">و</button>
+          <button className="login-btn" type="button" onClick={() => setAuthOpen(true)}>{authUser ? (authUser.displayName?.slice(0, 1) || "ح") : "دخول"}</button><button className="mini-avatar" type="button" onClick={() => navigate("profile")} aria-label="حسابي">{authUser?.displayName?.slice(0, 1) || "و"}</button>
         </div>
       </header>
       {searchOpen ? <form className="search-bar" onSubmit={submitSearch}><span>⌕</span><input autoFocus value={search} onChange={(event) => setSearch(event.target.value)} placeholder="دور على غرفة أو شخص أو لعبة..." aria-label="البحث العام" /><button type="button" onClick={() => { setSearchOpen(false); setSearch(""); }} aria-label="إغلاق البحث">✕</button></form> : null}
@@ -154,5 +166,6 @@ export default function App() {
     <nav className="bottom-nav" aria-label="التنقل الرئيسي">{navItems.map((item) => <button className={`nav-item ${screen === item.id ? "active" : ""}`} key={item.id} type="button" onClick={() => navigate(item.id)} aria-current={screen === item.id ? "page" : undefined}><span>{item.icon}</span><small>{item.label}</small></button>)}</nav>
     <div className={`toast ${toast ? "show" : ""}`} role="status" aria-live="polite">{toast}</div>
     {modal ? <AppModal info={modal} onClose={() => setModal(null)} /> : null}
+    {authOpen ? <AuthDialog onClose={() => setAuthOpen(false)} configured={isFirebaseConfigured} /> : null}
   </>;
 }

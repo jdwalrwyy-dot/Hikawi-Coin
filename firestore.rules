@@ -1,0 +1,70 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isOwner() { return signedIn() && request.auth.token.admin == true; }
+    function isSelf(uid) { return signedIn() && request.auth.uid == uid; }
+
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create: if isSelf(uid)
+        && request.resource.data.uid == uid
+        && request.resource.data.keys().hasOnly(['uid','displayName','photoURL','email','phoneNumber','bio','lastSignInAt','updatedAt','createdAt']);
+      allow update: if isSelf(uid)
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','photoURL','email','phoneNumber','bio','lastSignInAt','updatedAt']);
+      allow delete: if isOwner();
+    }
+
+    match /friendRequests/{requestId} {
+      allow create: if signedIn() && request.resource.data.fromUid == request.auth.uid
+        && request.resource.data.toUid is string && request.resource.data.toUid != request.auth.uid
+        && request.resource.data.status == 'pending';
+      allow read: if signedIn() && (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid);
+      allow update: if signedIn() && resource.data.toUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt'])
+        && request.resource.data.status in ['accepted','rejected'];
+      allow delete: if signedIn() && (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid);
+    }
+
+    match /conversations/{conversationId} {
+      allow read: if signedIn() && request.auth.uid in resource.data.memberUids;
+      allow create: if signedIn() && request.resource.data.memberUids is list
+        && request.auth.uid in request.resource.data.memberUids
+        && request.resource.data.memberUids.size() == 2;
+      allow update: if signedIn() && request.auth.uid in resource.data.memberUids
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessageAt','lastMessagePreview']);
+      allow delete: if isOwner();
+      match /messages/{messageId} {
+        function member() {
+          return signedIn() && exists(/databases/$(database)/documents/conversations/$(conversationId))
+            && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.memberUids;
+        }
+        allow read: if member();
+        allow create: if member() && request.resource.data.senderUid == request.auth.uid
+          && request.resource.data.text is string && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 4000;
+        allow update, delete: if member() && resource.data.senderUid == request.auth.uid;
+      }
+    }
+
+    match /rooms/{roomId} {
+      allow read: if signedIn() && (resource.data.visibility == 'public' || resource.data.ownerUid == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if isOwner() || (signedIn() && resource.data.ownerUid == request.auth.uid);
+    }
+
+    // Balances and financial ledgers are server-only.
+    match /wallets/{uid} {
+      allow read: if isSelf(uid) || isOwner();
+      allow write: if false;
+    }
+    match /transactions/{transactionId} {
+      allow read: if signedIn() && (resource.data.uid == request.auth.uid || isOwner());
+      allow write: if false;
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
