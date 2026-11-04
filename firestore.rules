@@ -84,7 +84,8 @@ service cloud.firestore {
           && request.auth.uid == uid
           && get(/databases/$(database)/documents/rooms/$(roomId)).data.visibility == 'public'
           && request.resource.data.uid == uid
-          && request.resource.data.role == 'member';
+          && ((get(/databases/$(database)/documents/rooms/$(roomId)).data.ownerUid == uid && request.resource.data.role == 'owner')
+            || (get(/databases/$(database)/documents/rooms/$(roomId)).data.ownerUid != uid && request.resource.data.role == 'member'));
         allow update: if signedIn()
           && request.auth.uid == uid
           && resource.data.uid == uid
