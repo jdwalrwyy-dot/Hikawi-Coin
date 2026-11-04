@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { GoogleAuthProvider, RecaptchaVerifier, signInWithPhoneNumber, signInWithPopup, signInWithRedirect, type ConfirmationResult } from "firebase/auth";
+import { GoogleAuthProvider, RecaptchaVerifier, getRedirectResult, signInWithPhoneNumber, signInWithRedirect, type ConfirmationResult } from "firebase/auth";
 import { auth } from "../firebase";
 
 interface AuthDialogProps { onClose: () => void; configured: boolean; mode?: "login" | "register"; }
