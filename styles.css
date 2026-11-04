@@ -63,3 +63,20 @@ img,video,canvas,svg{max-width:100%}
 .welcome-actions p{font-size:11px;line-height:1.9;color:#c6b8d1;margin:8px 0 0}
 .welcome-actions a{color:#e7c77b;text-decoration:underline}
 @media(max-height:740px){.welcome-screen{padding-top:16px}.welcome-art{inset:0}.welcome-actions{gap:9px}.welcome-primary,.welcome-secondary{min-height:52px}}
+
+/* Single-screen royal welcome and inline authentication */
+.welcome-screen{min-height:100svh;height:100svh;padding:0;background:#090316}
+.welcome-art{inset:0;background-image:linear-gradient(180deg,rgba(8,2,22,0) 48%,rgba(9,3,22,.06) 66%,rgba(9,3,22,.35) 100%),url('/hikawi-login.jpg');background-position:center;background-size:100% 100%;background-repeat:no-repeat}
+.welcome-actions{position:absolute;bottom:max(22px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:min(calc(100% - 38px),420px);gap:10px}
+.welcome-actions p{margin:3px 0 0;text-shadow:0 1px 5px #000}
+.welcome-primary,.welcome-secondary{min-height:53px;font-size:16px}
+.auth-inline{position:relative;max-width:none;width:100%;max-height:58svh;overflow-y:auto;padding:25px 18px 16px;background:rgba(20,13,29,.94);border:1px solid #d9b96b88;box-shadow:0 8px 35px #0009}
+.auth-inline .auth-close{top:7px;left:10px;font-size:13px;padding:5px 8px}
+.auth-inline .modal-symbol{font-size:30px}
+.auth-inline h2{font-size:19px;margin:3px 0}
+.auth-inline .auth-intro{margin:4px 0;font-size:11px}
+.auth-inline .auth-action{padding:10px;margin-top:7px}
+.auth-inline input{padding:10px;margin-top:7px}
+.auth-inline .auth-note{margin-top:7px;font-size:9px}
+.welcome-actions.auth-active{bottom:max(12px,env(safe-area-inset-bottom));}
+@media(max-height:740px){.auth-inline{max-height:62svh;padding:22px 14px 12px}.welcome-actions.auth-active{bottom:max(8px,env(safe-area-inset-bottom))}.welcome-primary,.welcome-secondary{min-height:48px}}
