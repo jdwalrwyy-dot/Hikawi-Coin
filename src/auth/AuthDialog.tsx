@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { GoogleAuthProvider, RecaptchaVerifier, getRedirectResult, signInWithPhoneNumber, signInWithRedirect, type ConfirmationResult } from "firebase/auth";
+import { GoogleAuthProvider, RecaptchaVerifier, getRedirectResult, signInWithPhoneNumber, signInWithRedirect, type ConfirmationResult, type UserCredential } from "firebase/auth";
 import { auth } from "../firebase";
 
 interface AuthDialogProps { onClose: () => void; configured: boolean; mode?: "login" | "register"; }
@@ -24,7 +24,7 @@ export default function AuthDialog({ onClose, configured, mode = "login" }: Auth
   const [confirmation,setConfirmation]=useState<ConfirmationResult|null>(null);
   const [busy,setBusy]=useState(false); const [error,setError]=useState(""); const [success,setSuccess]=useState("");
   const verifier=useRef<RecaptchaVerifier|null>(null);
-  useEffect(()=>{ if(!auth)return; let active=true; getRedirectResult(auth).then((result)=>{ if(active && result) { setSuccess("تم تسجيل الدخول بنجاح."); window.setTimeout(onClose,500); } }).catch((cause)=>{ if(active)setError(readableError(cause)); }); return ()=>{active=false;verifier.current?.clear();}; },[onClose]);
+  useEffect(()=>{ if(!auth)return; let active=true; getRedirectResult(auth).then((result: UserCredential | null)=>{ if(active && result) { setSuccess("تم تسجيل الدخول بنجاح."); window.setTimeout(onClose,500); } }).catch((cause: unknown)=>{ if(active)setError(readableError(cause)); }); return ()=>{active=false;verifier.current?.clear();}; },[onClose]);
   async function googleLogin() {
     if (!auth) {
       setError("تسجيل الدخول غير جاهز: إعدادات Firebase ناقصة. راجع إعدادات المشروع.");
@@ -35,7 +35,7 @@ export default function AuthDialog({ onClose, configured, mode = "login" }: Auth
     provider.setCustomParameters({ prompt: "select_account" });
     try {
       await signInWithRedirect(auth, provider);
-    } catch (cause) {
+    } catch (cause: unknown) {
       setBusy(false);
       setError(readableError(cause));
     }
@@ -43,12 +43,12 @@ export default function AuthDialog({ onClose, configured, mode = "login" }: Auth
   async function sendCode(event:FormEvent<HTMLFormElement>) {
     event.preventDefault();if(!auth){setError("تسجيل الدخول برقم الموبايل غير جاهز: إعدادات Firebase ناقصة.");return;}setBusy(true);setError("");setSuccess("");
     try { verifier.current??=new RecaptchaVerifier(auth,"phone-recaptcha",{size:"invisible"});const result=await signInWithPhoneNumber(auth,phone.trim(),verifier.current);setConfirmation(result);setSuccess("بعتنالك رمز التأكيد برسالة SMS."); }
-    catch(cause){verifier.current?.clear();verifier.current=null;setError(readableError(cause));}finally{setBusy(false);}
+    catch(cause: unknown){verifier.current?.clear();verifier.current=null;setError(readableError(cause));}finally{setBusy(false);}
   }
   async function verifyCode(event:FormEvent<HTMLFormElement>) {
     event.preventDefault();if(!confirmation)return;setBusy(true);setError("");setSuccess("");
     try{await confirmation.confirm(code.trim());setSuccess("تم تأكيد رقم الموبايل بنجاح.");window.setTimeout(onClose,500);}
-    catch(cause){setError(readableError(cause));}finally{setBusy(false);}
+    catch(cause: unknown){setError(readableError(cause));}finally{setBusy(false);}
   }
   return <div className="modal-backdrop" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget)onClose();}}>
     <section className="modal auth-dialog" role="dialog" aria-modal="true" aria-labelledby="auth-title">
