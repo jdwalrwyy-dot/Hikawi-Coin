@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { GoogleAuthProvider, RecaptchaVerifier, signInWithPhoneNumber, signInWithRedirect, type ConfirmationResult } from "firebase/auth";
+import { GoogleAuthProvider, RecaptchaVerifier, signInWithPhoneNumber, signInWithPopup, type ConfirmationResult } from "firebase/auth";
 import { auth } from "../firebase";
 
 interface AuthDialogProps { onClose: () => void; configured: boolean; mode?: "login" | "register"; }
@@ -34,7 +34,7 @@ export default function AuthDialog({ onClose, configured, mode = "login" }: Auth
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
     try {
-      await signInWithRedirect(auth, provider);
+      await signInWithPopup(auth, provider);
     } catch (cause: unknown) {
       setBusy(false);
       setError(readableError(cause));
