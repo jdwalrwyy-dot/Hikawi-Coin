@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { GoogleAuthProvider, RecaptchaVerifier, signInWithPhoneNumber, signInWithPopup, type ConfirmationResult } from "firebase/auth";
+import { GoogleAuthProvider, RecaptchaVerifier, signInWithPhoneNumber, signInWithPopup, signInWithRedirect, type ConfirmationResult } from "firebase/auth";
 import { auth } from "../firebase";
 
 interface AuthDialogProps { onClose: () => void; configured: boolean; mode?: "login" | "register"; }
@@ -12,7 +12,10 @@ function readableError(error: unknown): string {
     "auth/invalid-phone-number":"رقم الموبايل مش مكتوب بصيغة دولية صحيحة.",
     "auth/too-many-requests":"محاولات كتير. استنى شوية وجرب تاني.",
     "auth/invalid-verification-code":"رمز التأكيد غير صحيح.",
-    "auth/network-request-failed":"في مشكلة اتصال بالإنترنت."
+    "auth/network-request-failed":"في مشكلة اتصال بالإنترنت.",
+    "auth/popup-blocked":"المتصفح منع نافذة Google. هنحوّلك لطريقة تسجيل الدخول الآمنة.",
+    "auth/operation-not-allowed":"طريقة تسجيل الدخول دي مش مفعّلة في Firebase لهذا التطبيق.",
+    "auth/account-exists-with-different-credential":"الحساب موجود بطريقة دخول مختلفة. جرّب نفس الطريقة اللي سجلت بيها أول مرة."
   };
   return messages[code] ?? "تعذر تسجيل الدخول. راجع إعدادات Firebase وحاول مرة أخرى.";
 }
@@ -28,7 +31,7 @@ export default function AuthDialog({ onClose, configured, mode = "login" }: Auth
     catch(cause){setError(readableError(cause));} finally{setBusy(false);}
   }
   async function sendCode(event:FormEvent<HTMLFormElement>) {
-    event.preventDefault();if(!auth)return;setBusy(true);setError("");setSuccess("");
+    event.preventDefault();if(!auth){setError("تسجيل الدخول برقم الموبايل غير جاهز: إعدادات Firebase ناقصة.");return;}setBusy(true);setError("");setSuccess("");
     try { verifier.current??=new RecaptchaVerifier(auth,"phone-recaptcha",{size:"invisible"});const result=await signInWithPhoneNumber(auth,phone.trim(),verifier.current);setConfirmation(result);setSuccess("بعتنالك رمز التأكيد برسالة SMS."); }
     catch(cause){verifier.current?.clear();verifier.current=null;setError(readableError(cause));}finally{setBusy(false);}
   }
