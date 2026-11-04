@@ -87,10 +87,10 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/rooms/$(roomId)).data.visibility == 'public';
         allow create: if signedIn()
           && request.auth.uid == uid
-          && get(/databases/$(database)/documents/rooms/$(roomId)).data.visibility == 'public'
+          && getAfter(/databases/$(database)/documents/rooms/$(roomId)).data.visibility == 'public'
           && request.resource.data.uid == uid
-          && ((get(/databases/$(database)/documents/rooms/$(roomId)).data.ownerUid == uid && request.resource.data.role == 'owner')
-            || (get(/databases/$(database)/documents/rooms/$(roomId)).data.ownerUid != uid && request.resource.data.role == 'member'));
+          && ((getAfter(/databases/$(database)/documents/rooms/$(roomId)).data.ownerUid == uid && request.resource.data.role == 'owner')
+            || (getAfter(/databases/$(database)/documents/rooms/$(roomId)).data.ownerUid != uid && request.resource.data.role == 'member'));
         allow update: if signedIn()
           && request.auth.uid == uid
           && resource.data.uid == uid
