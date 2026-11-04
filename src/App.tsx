@@ -40,7 +40,7 @@ function HomePage({ navigate, rooms, onJoin }: { navigate: (id: ScreenId) => voi
 
 function RoomsPage({ rooms, onJoin, onCreate }: { rooms: LiveRoomRecord[]; onJoin: (room: Room | LiveRoomRecord) => void; onCreate: (name: string, description: string, category: string) => Promise<void> }) {
   const [filter, setFilter] = useState("الكل");
-  const filters = ["الكل", "الأكثر نشاطاً", "أصدقاء", "موسيقى", "تعارف"];
+  const filters = ["الكل", "الأكثر نشاطاً", "سوالف", "ترفيه", "موسيقى", "تعارف"];
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -49,7 +49,7 @@ function RoomsPage({ rooms, onJoin, onCreate }: { rooms: LiveRoomRecord[]; onJoi
   async function submitRoom(event: FormEvent<HTMLFormElement>) { event.preventDefault(); try { setError(""); await onCreate(name, description, category); setName(""); setDescription(""); setCreating(false); } catch (reason) { setError(reason instanceof Error ? reason.message : "تعذر إنشاء الغرفة."); } }
   return <section className="screen active" id="rooms"><PageTitle eyebrow="FIND YOUR PEOPLE" title="الغرف الصوتية" description="كل غرفة حكاية.. اختار الحكاية اللي على مزاجك." />
     <div className="filter-chips">{filters.map((item) => <button className={filter === item ? "selected" : ""} key={item} type="button" onClick={() => setFilter(item)}>{item}</button>)}</div>
-    <div className="room-list roomy">{rooms.map((room) => <RoomCard key={room.id} room={room} onJoin={onJoin} />)}{rooms.length === 0 ? <p className="muted">مفيش غرف عامة لسه. أنشئ أول غرفة وابدأ اللمة.</p> : null}</div>
+    <div className="room-list roomy">{(filter === "الأكثر نشاطاً" ? [...rooms].sort((a, b) => (b.members ?? 0) - (a.members ?? 0)) : filter === "الكل" ? rooms : rooms.filter((room) => room.category === filter)).map((room) => <RoomCard key={room.id} room={room} onJoin={onJoin} />)}{rooms.length === 0 ? <p className="muted">مفيش غرف عامة لسه. أنشئ أول غرفة وابدأ اللمة.</p> : null}{rooms.length > 0 && filter !== "الكل" && filter !== "الأكثر نشاطاً" && !rooms.some((room) => room.category === filter) ? <p className="muted">مفيش غرف في التصنيف ده حاليًا.</p> : null}</div>
     <button className="create-room-btn" type="button" onClick={() => setCreating((value) => !value)}>＋ اعمل غرفتك</button>
     {creating ? <form className="support-card" onSubmit={(event) => void submitRoom(event)}><input required minLength={3} maxLength={40} value={name} onChange={(event) => setName(event.target.value)} placeholder="اسم الغرفة" /><textarea value={description} onChange={(event) => setDescription(event.target.value)} maxLength={160} placeholder="وصف بسيط للغرفة" /><select value={category} onChange={(event) => setCategory(event.target.value)}><option>سوالف</option><option>ترفيه</option><option>موسيقى</option><option>تعارف</option></select>{error ? <p className="auth-error">{error}</p> : null}<button className="gold-btn" type="submit">إنشاء الغرفة</button></form> : null}
   </section>;
