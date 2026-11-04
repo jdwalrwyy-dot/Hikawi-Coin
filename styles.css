@@ -99,3 +99,10 @@ img,video,canvas,svg{max-width:100%}
 .auth-inline .auth-close{font-size:12px;top:5px;left:8px}
 .auth-inline .auth-error,.auth-inline .auth-success{font-size:10px;margin:5px 0}
 @media(max-height:700px){.welcome-actions.auth-active{bottom:4px}.auth-inline{max-height:48svh;padding:17px 12px 9px}.auth-inline .auth-note{display:none}.welcome-primary,.welcome-secondary{min-height:46px}}
+
+/* Welcome screen: maintain original artwork geometry on mobile */
+.welcome-screen{width:100%;min-height:100svh;height:100svh;overflow:hidden;background:#090316;isolation:isolate}
+.welcome-art{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:contain;object-position:center center;filter:none;opacity:1;background:#090316;image-rendering:auto}
+.welcome-actions{position:absolute;z-index:2;left:50%;transform:translateX(-50%);bottom:max(26px,env(safe-area-inset-bottom));width:min(calc(100% - 34px),420px);gap:12px}
+.welcome-actions.auth-active{bottom:max(12px,env(safe-area-inset-bottom))}
+@media (max-width:480px){.welcome-primary,.welcome-secondary{min-height:52px}}
