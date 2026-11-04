@@ -4,6 +4,11 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
     function isOwner() { return signedIn() && request.auth.token.admin == true; }
     function isSelf(uid) { return signedIn() && request.auth.uid == uid; }
+    function friendshipMember(pairId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/friendships/$(pairId))
+        && request.auth.uid in get(/databases/$(database)/documents/friendships/$(pairId)).data.memberUids;
+    }
 
     match /users/{uid} {
       allow read: if signedIn();
@@ -27,24 +32,38 @@ service cloud.firestore {
       allow delete: if signedIn() && (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid);
     }
 
+    // Friendship records are created by trusted server code only after a request is accepted.
+    match /friendships/{pairId} {
+      allow read: if friendshipMember(pairId);
+      allow write: if false;
+    }
+
     match /conversations/{conversationId} {
-      allow read: if signedIn() && request.auth.uid in resource.data.memberUids;
-      allow create: if signedIn() && request.resource.data.memberUids is list
+      allow read: if friendshipMember(conversationId)
+        && request.auth.uid in resource.data.memberUids;
+      allow create: if friendshipMember(conversationId)
+        && request.resource.data.memberUids is list
+        && request.resource.data.memberUids.size() == 2
         && request.auth.uid in request.resource.data.memberUids
-        && request.resource.data.memberUids.size() == 2;
-      allow update: if signedIn() && request.auth.uid in resource.data.memberUids
+        && request.resource.data.memberUids == get(/databases/$(database)/documents/friendships/$(conversationId)).data.memberUids;
+      allow update: if friendshipMember(conversationId)
+        && request.auth.uid in resource.data.memberUids
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessageAt','lastMessagePreview']);
       allow delete: if isOwner();
       match /messages/{messageId} {
-        function member() {
-          return signedIn() && exists(/databases/$(database)/documents/conversations/$(conversationId))
+        function conversationMember() {
+          return friendshipMember(conversationId)
+            && exists(/databases/$(database)/documents/conversations/$(conversationId))
             && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.memberUids;
         }
-        allow read: if member();
-        allow create: if member() && request.resource.data.senderUid == request.auth.uid
-          && request.resource.data.text is string && request.resource.data.text.size() > 0
+        allow read: if conversationMember();
+        allow create: if conversationMember()
+          && request.resource.data.senderUid == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
           && request.resource.data.text.size() <= 4000;
-        allow update, delete: if member() && resource.data.senderUid == request.auth.uid;
+        allow update, delete: if conversationMember()
+          && resource.data.senderUid == request.auth.uid;
       }
     }
 
