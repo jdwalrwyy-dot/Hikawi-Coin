@@ -130,7 +130,7 @@ function RoomView({ room, onBack }: { room: LiveRoomRecord; onBack: () => void }
 
 function WelcomePage({ onLogin, onRegister, authOpen, authMode, onCloseAuth }: { onLogin: () => void; onRegister: () => void; authOpen: boolean; authMode: "login" | "register"; onCloseAuth: () => void }) {
   return <main className="welcome-screen" dir="rtl">
-    <div className="welcome-art" role="img" aria-label="حكاوي كوين - الصورة الملكية" />
+    <img className="welcome-art" src="/hikawi-login.jpg" alt="حكاوي كوين - الصورة الملكية" />
     <section className={authOpen ? "welcome-actions auth-active" : "welcome-actions"}>
       {authOpen ? <AuthDialog onClose={onCloseAuth} configured={isFirebaseConfigured} mode={authMode} /> : <>
         <button className="welcome-primary" type="button" onClick={onLogin}><span>♟</span> تسجيل الدخول</button>
