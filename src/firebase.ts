@@ -1,6 +1,6 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { getAuth, type User } from "firebase/auth";
-import { addDoc, collection, doc, getDoc, getFirestore, onSnapshot, query, serverTimestamp, setDoc, where, type Unsubscribe } from "firebase/firestore";
+import { collection, doc, getDoc, getFirestore, onSnapshot, query, serverTimestamp, setDoc, where, writeBatch, type Unsubscribe } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -58,7 +58,10 @@ export async function createLiveRoom(input: { name: string; description: string;
   if (!db) throw new Error("Firebase غير مُعدّ بعد.");
   const name = input.name.trim();
   if (name.length < 3 || name.length > 40) throw new Error("اسم الغرفة لازم يكون من 3 إلى 40 حرف.");
-  const ref = await addDoc(collection(db, "rooms"), {
+  const roomRef = doc(collection(db, "rooms"));
+  const memberRef = doc(db, "rooms", roomRef.id, "members", input.user.uid);
+  const batch = writeBatch(db);
+  batch.set(roomRef, {
     name,
     description: input.description.trim().slice(0, 160),
     category: input.category,
@@ -68,13 +71,14 @@ export async function createLiveRoom(input: { name: string; description: string;
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
-  await setDoc(doc(db, "rooms", ref.id, "members", input.user.uid), {
+  batch.set(memberRef, {
     uid: input.user.uid,
     displayName: input.user.displayName || "عضو حكاوي",
     joinedAt: serverTimestamp(),
     role: "owner",
   });
-  return ref.id;
+  await batch.commit();
+  return roomRef.id;
 }
 
 export async function joinLiveRoom(roomId: string, user: User): Promise<void> {
