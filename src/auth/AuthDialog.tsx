@@ -26,9 +26,32 @@ export default function AuthDialog({ onClose, configured, mode = "login" }: Auth
   const verifier=useRef<RecaptchaVerifier|null>(null);
   useEffect(()=>()=>{verifier.current?.clear();},[]);
   async function googleLogin() {
-    if(!auth)return; setBusy(true);setError("");setSuccess("");
-    try { await signInWithPopup(auth,new GoogleAuthProvider());setSuccess("تم تسجيل الدخول بنجاح.");window.setTimeout(onClose,500); }
-    catch(cause){setError(readableError(cause));} finally{setBusy(false);}
+    if (!auth) {
+      setError("تسجيل الدخول غير جاهز: إعدادات Firebase ناقصة أو لم يتم تحميلها. راجع متغيرات VITE_FIREBASE في إعدادات Vercel.");
+      return;
+    }
+    setBusy(true); setError(""); setSuccess("");
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+    try {
+      await signInWithPopup(auth, provider);
+      setSuccess("تم تسجيل الدخول بنجاح.");
+      window.setTimeout(onClose, 500);
+    } catch (cause) {
+      const code = cause && typeof cause === "object" && "code" in cause ? String(cause.code) : "";
+      if (code === "auth/popup-blocked") {
+        try {
+          await signInWithRedirect(auth, provider);
+          return;
+        } catch (redirectError) {
+          setError(readableError(redirectError));
+        }
+      } else {
+        setError(readableError(cause));
+      }
+    } finally {
+      setBusy(false);
+    }
   }
   async function sendCode(event:FormEvent<HTMLFormElement>) {
     event.preventDefault();if(!auth){setError("تسجيل الدخول برقم الموبايل غير جاهز: إعدادات Firebase ناقصة.");return;}setBusy(true);setError("");setSuccess("");
