@@ -1,6 +1,6 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { getAuth, type User } from "firebase/auth";
-import { addDoc, collection, doc, getFirestore, onSnapshot, serverTimestamp, setDoc, type Unsubscribe } from "firebase/firestore";
+import { addDoc, collection, doc, getFirestore, onSnapshot, query, serverTimestamp, setDoc, where, type Unsubscribe } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -43,7 +43,7 @@ export interface LiveRoomRecord {
 
 export function subscribePublicRooms(onRooms: (rooms: LiveRoomRecord[]) => void, onError: (error: Error) => void): Unsubscribe {
   if (!db) throw new Error("Firebase غير مُعدّ بعد.");
-  return onSnapshot(collection(db, "rooms"), (snapshot) => {
+  return onSnapshot(query(collection(db, "rooms"), where("visibility", "==", "public")), (snapshot) => {
     const rooms = snapshot.docs
       .map((item) => ({ id: item.id, ...item.data() } as LiveRoomRecord))
       .filter((room) => room.visibility === "public");
