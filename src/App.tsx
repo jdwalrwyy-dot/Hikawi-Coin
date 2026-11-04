@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { onAuthStateChanged, type User } from "firebase/auth";
+import { getRedirectResult, onAuthStateChanged, type User } from "firebase/auth";
 import { auth, isFirebaseConfigured, saveUserProfile } from "./firebase";
 import AuthDialog from "./auth/AuthDialog";
 import { navItems, type PageAction, type Room, type ScreenId } from "./data";
@@ -153,6 +153,16 @@ export default function App() {
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState("");
   useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, [screen]);
+  useEffect(() => {
+    if (!auth) return undefined;
+    let active = true;
+    getRedirectResult(auth).then((result) => {
+      if (active && result) setToast("تم تسجيل الدخول باستخدام Google بنجاح.");
+    }).catch((error: unknown) => {
+      if (active) setToast(error instanceof Error ? error.message : "تعذر إكمال تسجيل الدخول باستخدام Google.");
+    });
+    return () => { active = false; };
+  }, []);
   useEffect(() => {
     if (!auth) return undefined;
     return onAuthStateChanged(auth, (user) => {
