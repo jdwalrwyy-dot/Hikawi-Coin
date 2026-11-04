@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { getRedirectResult, onAuthStateChanged, type User } from "firebase/auth";
+import { getRedirectResult, onAuthStateChanged, signOut, type User } from "firebase/auth";
 import { auth, isFirebaseConfigured, saveUserProfile } from "./firebase";
 import AuthDialog from "./auth/AuthDialog";
 import { navItems, type PageAction, type Room, type ScreenId } from "./data";
@@ -105,8 +105,8 @@ function StorePage({ onAction }: { onAction: PageAction }) {
   return <section className="screen active" id="store"><PageTitle eyebrow="THE ROYAL COLLECTION" title="المتجر الملكي ♛" description="اختار حاجة تليق بحضورك." /><div className="store-tabs">{categories.map((item) => <button className={category === item ? "selected" : ""} key={item} type="button" onClick={() => setCategory(item)}>{item}</button>)}</div><div className="gift-grid">{gifts.map((gift) => <div className="gift-card" key={gift.name}><div className={`gift-art ${gift.cls}`}>{gift.symbol}</div><b>{gift.name}</b><small>{gift.price}</small><button type="button" onClick={() => onAction("gift", gift.name, "إرسال الهدايا وخصم الرصيد مش مفعّلين قبل ربط المحفظة الآمنة.")}>اختار الهدية</button></div>)}</div></section>;
 }
 
-function SettingsPage({ navigate, onAction }: { navigate: (id: ScreenId) => void; onAction: PageAction }) {
-  return <section className="screen active" id="settings"><div className="page-title"><span className="eyebrow">MAKE IT YOURS</span><h1>الإعدادات</h1></div><div className="settings-list"><label><span>إخفاء حالة الاتصال</span><input type="checkbox" /></label><label><span>السماح برسائل الأصدقاء فقط</span><input type="checkbox" defaultChecked /></label><label><span>أصوات الهدايا المميزة</span><input type="checkbox" defaultChecked /></label><label><span>الوضع الملكي الداكن</span><input type="checkbox" defaultChecked /></label><button type="button" onClick={() => navigate("support")}>مركز المساعدة والدعم ←</button><button className="danger" type="button" onClick={() => onAction("logout", "تسجيل الخروج", "تسجيل الدخول والخروج هيتفعل بعد إضافة نظام الحسابات والتحقق.")}>تسجيل الخروج</button></div></section>;
+function SettingsPage({ navigate, onAction, onLogout }: { navigate: (id: ScreenId) => void; onAction: PageAction; onLogout: () => void }) {
+  return <section className="screen active" id="settings"><div className="page-title"><span className="eyebrow">MAKE IT YOURS</span><h1>الإعدادات</h1></div><div className="settings-list"><label><span>إخفاء حالة الاتصال</span><input type="checkbox" /></label><label><span>السماح برسائل الأصدقاء فقط</span><input type="checkbox" defaultChecked /></label><label><span>أصوات الهدايا المميزة</span><input type="checkbox" defaultChecked /></label><label><span>الوضع الملكي الداكن</span><input type="checkbox" defaultChecked /></label><button type="button" onClick={() => navigate("support")}>مركز المساعدة والدعم ←</button><button className="danger" type="button" onClick={onLogout}>تسجيل الخروج</button></div></section>;
 }
 
 function SupportPage({ onAction }: { onAction: PageAction }) {
@@ -189,8 +189,8 @@ export default function App() {
     setToast("تم إنشاء الغرفة بنجاح");
   };
   const navigate = (next: ScreenId) => { setScreen(next); setSearchOpen(false); };
+  const logout = () => { if (auth) void signOut(auth).catch((error: unknown) => setToast(error instanceof Error ? error.message : "تعذر تسجيل الخروج.")); };
   const submitSearch = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); setToast(search.trim() ? "البحث الحقيقي هيتفعل بعد ربط قاعدة البيانات" : "اكتب كلمة للبحث"); };
-  if (!authUser) return <><WelcomePage onLogin={() => { setAuthMode("login"); setAuthOpen(true); }} onRegister={() => { setAuthMode("register"); setAuthOpen(true); }} />{authOpen ? <AuthDialog onClose={() => setAuthOpen(false)} configured={isFirebaseConfigured} mode={authMode} /> : null}</>;
   if (!authUser) return <><WelcomePage onLogin={() => { setAuthMode("login"); setAuthOpen(true); }} onRegister={() => { setAuthMode("register"); setAuthOpen(true); }} />{authOpen ? <AuthDialog onClose={() => setAuthOpen(false)} configured={isFirebaseConfigured} mode={authMode} /> : null}</>;
   return <>
     <div className="ambient ambient-a" aria-hidden="true" /><div className="ambient ambient-b" aria-hidden="true" />
@@ -216,7 +216,7 @@ export default function App() {
         {screen === "profile" ? <ProfilePage navigate={navigate} onAction={onAction} /> : null}
         {screen === "wallet" ? <WalletPage onAction={onAction} /> : null}
         {screen === "store" ? <StorePage onAction={onAction} /> : null}
-        {screen === "settings" ? <SettingsPage navigate={navigate} onAction={onAction} /> : null}
+        {screen === "settings" ? <SettingsPage navigate={navigate} onAction={onAction} onLogout={logout} /> : null}
         {screen === "support" ? <SupportPage onAction={onAction} /> : null}
       </main>
     </div>
