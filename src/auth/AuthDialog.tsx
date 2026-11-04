@@ -50,9 +50,8 @@ export default function AuthDialog({ onClose, configured, mode = "login" }: Auth
     try{await confirmation.confirm(code.trim());setSuccess("تم تأكيد رقم الموبايل بنجاح.");window.setTimeout(onClose,500);}
     catch(cause: unknown){setError(readableError(cause));}finally{setBusy(false);}
   }
-  return <div className="modal-backdrop" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget)onClose();}}>
-    <section className="modal auth-dialog" role="dialog" aria-modal="true" aria-labelledby="auth-title">
-      <button className="auth-close" type="button" onClick={onClose} aria-label="إغلاق">×</button>
+  return <section className="auth-dialog auth-inline" role="dialog" aria-modal="false" aria-labelledby="auth-title">
+      <button className="auth-close" type="button" onClick={onClose} aria-label="رجوع">رجوع ×</button>
       <div className="modal-symbol">♛</div><h2 id="auth-title">{mode === "register" ? "إنشاء حساب في حكاوي كوين" : "أهلاً بيك في حكاوي كوين"}</h2>
       <p className="auth-intro">{mode === "register" ? "اختار Google أو رقم الموبايل لإنشاء حسابك والبدء." : "سجّل دخولك عشان تحتفظ بحسابك وتبدأ حكايتك."}</p>
       {!configured?<p className="auth-error">تسجيل الدخول مش متاح لسه: إعدادات Firebase الخاصة بالمشروع لم تُضف. أضف القيم الموجودة في ملف .env.example إلى إعدادات بيئة التشغيل.</p>:<>
@@ -63,6 +62,5 @@ export default function AuthDialog({ onClose, configured, mode = "login" }: Auth
       </>}
       {error?<p className="auth-error" role="alert">{error}</p>:null}{success?<p className="auth-success" role="status">{success}</p>:null}
       <p className="auth-note">باستمرارك، أنت توافق على شروط الاستخدام وسياسة الخصوصية. لا تشارك رمز التأكيد مع أي شخص.</p>
-    </section>
-  </div>;
+    </section>;
 }
