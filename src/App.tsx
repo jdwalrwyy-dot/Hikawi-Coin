@@ -211,6 +211,6 @@ export default function App() {
     <nav className="bottom-nav" aria-label="التنقل الرئيسي">{navItems.map((item) => <button className={`nav-item ${screen === item.id ? "active" : ""}`} key={item.id} type="button" onClick={() => navigate(item.id)} aria-current={screen === item.id ? "page" : undefined}><span>{item.icon}</span><small>{item.label}</small></button>)}</nav>
     <div className={`toast ${toast ? "show" : ""}`} role="status" aria-live="polite">{toast}</div>
     {modal ? <AppModal info={modal} onClose={() => setModal(null)} /> : null}
-    {authOpen ? <AuthDialog onClose={() => setAuthOpen(false)} configured={isFirebaseConfigured} /> : null}
+    {authOpen ? <AuthDialog onClose={() => setAuthOpen(false)} configured={isFirebaseConfigured} mode={authMode} /> : null}
   </>;
 }
