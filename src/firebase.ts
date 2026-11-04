@@ -38,7 +38,7 @@ export interface LiveRoomRecord {
   ownerUid: string;
   ownerName: string;
   visibility: "public" | "private";
-  createdAt?: unknown;
+  createdAt?: unknown;\n  members?: number;\n  coverClass?: string;\n  symbol?: string;
 }
 
 export function subscribePublicRooms(onRooms: (rooms: LiveRoomRecord[]) => void, onError: (error: Error) => void): Unsubscribe {
