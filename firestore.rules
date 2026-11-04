@@ -11,7 +11,7 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      allow read: if signedIn();
+      allow read: if isSelf(uid) || isOwner();
       allow create: if isSelf(uid)
         && request.resource.data.uid == uid
         && request.resource.data.keys().hasOnly(['uid','displayName','photoURL','email','phoneNumber','bio','lastSignInAt','updatedAt','createdAt']);
@@ -75,7 +75,12 @@ service cloud.firestore {
         && request.resource.data.name is string
         && request.resource.data.name.size() >= 3
         && request.resource.data.name.size() <= 40;
-      allow update, delete: if isOwner() || (signedIn() && resource.data.ownerUid == request.auth.uid);
+      allow update: if isOwner() || (signedIn()
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.visibility == resource.data.visibility
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','description','category','coverClass','symbol','updatedAt']));
+      allow delete: if isOwner() || (signedIn() && resource.data.ownerUid == request.auth.uid);
 
       match /members/{uid} {
         allow read: if signedIn()
