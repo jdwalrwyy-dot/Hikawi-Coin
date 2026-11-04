@@ -181,6 +181,7 @@ export default function App() {
   const navigate = (next: ScreenId) => { setScreen(next); setSearchOpen(false); };
   const submitSearch = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); setToast(search.trim() ? "البحث الحقيقي هيتفعل بعد ربط قاعدة البيانات" : "اكتب كلمة للبحث"); };
   if (!authUser) return <><WelcomePage onLogin={() => { setAuthMode("login"); setAuthOpen(true); }} onRegister={() => { setAuthMode("register"); setAuthOpen(true); }} />{authOpen ? <AuthDialog onClose={() => setAuthOpen(false)} configured={isFirebaseConfigured} mode={authMode} /> : null}</>;
+  if (!authUser) return <><WelcomePage onLogin={() => { setAuthMode("login"); setAuthOpen(true); }} onRegister={() => { setAuthMode("register"); setAuthOpen(true); }} />{authOpen ? <AuthDialog onClose={() => setAuthOpen(false)} configured={isFirebaseConfigured} mode={authMode} /> : null}</>;
   return <>
     <div className="ambient ambient-a" aria-hidden="true" /><div className="ambient ambient-b" aria-hidden="true" />
     <div className="app-shell">
