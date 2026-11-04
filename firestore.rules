@@ -69,8 +69,30 @@ service cloud.firestore {
 
     match /rooms/{roomId} {
       allow read: if signedIn() && (resource.data.visibility == 'public' || resource.data.ownerUid == request.auth.uid);
-      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.visibility in ['public', 'private']
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 3
+        && request.resource.data.name.size() <= 40;
       allow update, delete: if isOwner() || (signedIn() && resource.data.ownerUid == request.auth.uid);
+
+      match /members/{uid} {
+        allow read: if signedIn()
+          && get(/databases/$(database)/documents/rooms/$(roomId)).data.visibility == 'public';
+        allow create: if signedIn()
+          && request.auth.uid == uid
+          && get(/databases/$(database)/documents/rooms/$(roomId)).data.visibility == 'public'
+          && request.resource.data.uid == uid
+          && request.resource.data.role == 'member';
+        allow update: if signedIn()
+          && request.auth.uid == uid
+          && resource.data.uid == uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','joinedAt']);
+        allow delete: if signedIn() && (request.auth.uid == uid
+          || get(/databases/$(database)/documents/rooms/$(roomId)).data.ownerUid == request.auth.uid
+          || isOwner());
+      }
     }
 
     // Balances and financial ledgers are server-only.
