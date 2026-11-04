@@ -3,6 +3,7 @@ import { onAuthStateChanged, type User } from "firebase/auth";
 import { auth, isFirebaseConfigured, saveUserProfile } from "./firebase";
 import AuthDialog from "./auth/AuthDialog";
 import { demoRooms, navItems, type PageAction, type Room, type ScreenId } from "./data";
+import { createLiveRoom, joinLiveRoom, subscribePublicRooms, type LiveRoomRecord } from "./firebase";
 
 interface ModalInfo { title: string; message: string; }
 
@@ -10,16 +11,16 @@ function PageTitle({ eyebrow, title, description }: { eyebrow: string; title: st
   return <div className="page-title"><span className="eyebrow">{eyebrow}</span><h1>{title}</h1>{description ? <p>{description}</p> : null}</div>;
 }
 
-function RoomCard({ room, onAction }: { room: Room; onAction: PageAction }) {
+function RoomCard({ room, onJoin }: { room: Room | LiveRoomRecord; onJoin: (room: Room | LiveRoomRecord) => void }) {
   return <article className="room-card">
     <div className={`room-cover ${room.coverClass}`}>{room.symbol}</div>
     <div className="room-info"><b>{room.name}</b><small>{room.description}</small><div className="room-meta"><span>◉ {room.members}</span><span>♬ {room.category}</span></div></div>
     <span className="room-live">مباشر</span>
-    <button className="join-btn" type="button" onClick={() => onAction("room", room.name, "دي معاينة للغرفة. تشغيل الصوت ومقاعد المايك والدردشة يحتاج ربط الخادم وخدمة الصوت في مرحلة لاحقة.")}>دخول</button>
+    <button className="join-btn" type="button" onClick={() => onJoin(room)}>دخول</button>
   </article>;
 }
 
-function HomePage({ navigate, onAction }: { navigate: (id: ScreenId) => void; onAction: PageAction }) {
+function HomePage({ navigate, rooms, onJoin }: { navigate: (id: ScreenId) => void; rooms: LiveRoomRecord[]; onJoin: (room: Room | LiveRoomRecord) => void }) {
   const trends = [
     { name: "ليالي الملوك", count: "248 بيتونسوا", cls: "trend-one", symbol: "♛" },
     { name: "قعدة رايقة", count: "126 موجودين", cls: "trend-two", symbol: "☾" },
@@ -29,17 +30,23 @@ function HomePage({ navigate, onAction }: { navigate: (id: ScreenId) => void; on
   return <section className="screen active" id="home">
     <div className="hero-card"><div className="hero-copy"><span className="eyebrow"><i /> المكان اللي شبهك</span><h1>مش مجرد دخول..<br /><span>دي حكايتك.</span></h1><p>ناس جديدة، ضحكة من القلب، وليالي ملهاش آخر.</p><div className="hero-actions"><button className="gold-btn" type="button" onClick={() => navigate("rooms")}>اكتشف الغرف <span>←</span></button><button className="text-btn" type="button" onClick={() => navigate("live")}>شوف اللايف <span>↗</span></button></div></div><div className="hero-art" aria-hidden="true"><div className="orbit orbit-one" /><div className="orbit orbit-two" /><div className="hero-crown">♛</div><div className="hero-spark spark-one">✦</div><div className="hero-spark spark-two">✧</div><div className="hero-caption"><b>ليلتك.. تبدأ هنا</b><small>صوتك له مكان</small></div></div><div className="hero-glow" /></div>
     <div className="section-heading"><div><span className="eyebrow">LIVE NOW</span><h2>الترند مولّع <span className="hot-dot">●</span></h2></div><button className="see-all" type="button" onClick={() => navigate("rooms")}>كل الغرف ←</button></div>
-    <div className="trending-row">{trends.map((item) => <article className={`trend-card ${item.cls}`} key={item.name} role="button" tabIndex={0} onClick={() => onAction("room", item.name, "دي معاينة للغرفة. الخدمات الصوتية الحقيقية هتتربط في مرحلة مستقلة.")} onKeyDown={(event) => { if (event.key === "Enter") onAction("room", item.name, "دي معاينة للغرفة. الخدمات الصوتية الحقيقية هتتربط في مرحلة مستقلة."); }}><span className="live-tag">● مباشر</span><div className="trend-bottom"><b>{item.name}</b><small>◉ {item.count}</small></div><span className="trend-symbol">{item.symbol}</span></article>)}</div>
+    <div className="trending-row">{trends.map((item) => <article className={`trend-card ${item.cls}`} key={item.name} role="button" tabIndex={0} onClick={() => navigate("rooms")} onKeyDown={(event) => { if (event.key === "Enter") navigate("rooms"); }}><span className="live-tag">● مباشر</span><div className="trend-bottom"><b>{item.name}</b><small>◉ {item.count}</small></div><span className="trend-symbol">{item.symbol}</span></article>)}</div>
     <div className="section-heading"><div><span className="eyebrow">PICK YOUR VIBE</span><h2>اختار مودك</h2></div></div>
     <div className="mood-grid">{moods.map(([icon, title, subtitle]) => <button className="mood-card" key={title} type="button" onClick={() => navigate("rooms")}><span>{icon}</span><b>{title}</b><small>{subtitle}</small></button>)}</div>
     <div className="section-heading"><div><span className="eyebrow">ROOMS FOR YOU</span><h2>غرف تستاهل تدخلها</h2></div><button className="see-all" type="button" onClick={() => navigate("rooms")}>عرض الكل ←</button></div>
-    <div className="room-list">{demoRooms.slice(0, 3).map((room) => <RoomCard key={room.name} room={room} onAction={onAction} />)}</div>
+    <div className="room-list">{rooms.slice(0, 3).map((room) => <RoomCard key={room.id} room={room} onJoin={onJoin} />)}</div>
   </section>;
 }
 
-function RoomsPage({ onAction }: { onAction: PageAction }) {
+function RoomsPage({ rooms, onJoin, onCreate }: { rooms: LiveRoomRecord[]; onJoin: (room: Room | LiveRoomRecord) => void; onCreate: (name: string, description: string, category: string) => Promise<void> }) {
   const [filter, setFilter] = useState("الكل");
   const filters = ["الكل", "الأكثر نشاطاً", "أصدقاء", "موسيقى", "تعارف"];
+  const [creating, setCreating] = useState(false);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("سوالف");
+  const [error, setError] = useState("");
+  async function submitRoom(event: FormEvent<HTMLFormElement>) { event.preventDefault(); try { setError(""); await onCreate(name, description, category); setName(""); setDescription(""); setCreating(false); } catch (reason) { setError(reason instanceof Error ? reason.message : "تعذر إنشاء الغرفة."); } }
   return <section className="screen active" id="rooms"><PageTitle eyebrow="FIND YOUR PEOPLE" title="الغرف الصوتية" description="كل غرفة حكاية.. اختار الحكاية اللي على مزاجك." />
     <div className="filter-chips">{filters.map((item) => <button className={filter === item ? "selected" : ""} key={item} type="button" onClick={() => setFilter(item)}>{item}</button>)}</div>
     <div className="room-list roomy">{demoRooms.map((room) => <RoomCard key={room.name} room={room} onAction={onAction} />)}</div>
@@ -116,9 +123,9 @@ function AppModal({ info, onClose }: { info: ModalInfo; onClose: () => void }) {
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><button className="modal-close" type="button" onClick={onClose} aria-label="إغلاق">×</button><div className="modal-symbol">✦</div><h2 id="modal-title">{info.title}</h2><p>{info.message}</p><button className="gold-btn" type="button" onClick={onClose}>تمام</button></section></div>;
 }
 
-export default function App() {
+function RoomView({ room, onBack }: { room: LiveRoomRecord; onBack: () => void }) {\n  return <section className="screen active"><PageTitle eyebrow="VOICE ROOM" title={room.name} description={room.description || "أهلاً بيك في الغرفة"} /><div className="support-card"><span>♛</span><b>أنت داخل الغرفة</b><p>تم تسجيل انضمامك للغرفة. تشغيل المايك والصوت المباشر يحتاج تفعيل مزود الصوت ومفاتيح الخدمة على الخادم.</p><button className="gold-btn" type="button" onClick={onBack}>العودة للغرف</button></div><div className="section-heading"><h2>مقاعد الكوين</h2></div><div className="creator-grid">{Array.from({length: 8}, (_, index) => <div className="creator-card" key={index}><div className="creator-avatar ca2">♙</div><b>كوين {index + 1}</b><small>{index === 0 ? "مقعدك" : "متاح"}</small></div>)}</div></section>;\n}\n\nexport default function App() {
   const [screen, setScreen] = useState<ScreenId>("home");
-  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [authUser, setAuthUser] = useState<User | null>(null);\n  const [rooms, setRooms] = useState<LiveRoomRecord[]>([]);\n  const [selectedRoom, setSelectedRoom] = useState<LiveRoomRecord | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [modal, setModal] = useState<ModalInfo | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -133,7 +140,7 @@ export default function App() {
     });
   }, []);
   useEffect(() => { if (!toast) return undefined; const timer = window.setTimeout(() => setToast(""), 2300); return () => window.clearTimeout(timer); }, [toast]);
-  const onAction: PageAction = (_action, title, message) => setModal({ title: title ?? "حكاوي كوين", message: message ?? "الميزة دي هتتجهز في مرحلة لاحقة." });
+  useEffect(() => {\n    if (!authUser || !isFirebaseConfigured) { setRooms([]); return undefined; }\n    try { return subscribePublicRooms(setRooms, (error) => setToast(error.message)); }\n    catch (error) { setToast(error instanceof Error ? error.message : "تعذر تحميل الغرف"); return undefined; }\n  }, [authUser]);\n  const onAction: PageAction = (_action, title, message) => setModal({ title: title ?? "حكاوي كوين", message: message ?? "الميزة دي هتتجهز في مرحلة لاحقة." });\n  const enterRoom = async (room: Room | LiveRoomRecord) => {\n    if (!authUser) { setAuthOpen(true); setToast("سجّل دخولك الأول علشان تدخل الغرفة"); return; }\n    if (!("id" in room)) { setToast("الغرفة دي بيانات قديمة تجريبية؛ اختار غرفة منشأة من قاعدة البيانات."); return; }\n    try { await joinLiveRoom(room.id, authUser); setSelectedRoom(room); setScreen("room" as ScreenId); }\n    catch (error) { setToast(error instanceof Error ? error.message : "تعذر دخول الغرفة"); }\n  };\n  const makeRoom = async (name: string, description: string, category: string) => {\n    if (!authUser) { setAuthOpen(true); throw new Error("سجّل دخولك الأول لإنشاء غرفة."); }\n    await createLiveRoom({ name, description, category, user: authUser });\n    setToast("تم إنشاء الغرفة بنجاح");\n  };
   const navigate = (next: ScreenId) => { setScreen(next); setSearchOpen(false); };
   const submitSearch = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); setToast(search.trim() ? "البحث الحقيقي هيتفعل بعد ربط قاعدة البيانات" : "اكتب كلمة للبحث"); };
   return <>
