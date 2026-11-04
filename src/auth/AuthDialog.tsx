@@ -24,33 +24,20 @@ export default function AuthDialog({ onClose, configured, mode = "login" }: Auth
   const [confirmation,setConfirmation]=useState<ConfirmationResult|null>(null);
   const [busy,setBusy]=useState(false); const [error,setError]=useState(""); const [success,setSuccess]=useState("");
   const verifier=useRef<RecaptchaVerifier|null>(null);
-  useEffect(()=>()=>{verifier.current?.clear();},[]);
+  useEffect(()=>{ if(!auth)return; let active=true; getRedirectResult(auth).then((result)=>{ if(active && result) { setSuccess("تم تسجيل الدخول بنجاح."); window.setTimeout(onClose,500); } }).catch((cause)=>{ if(active)setError(readableError(cause)); }); return ()=>{active=false;verifier.current?.clear();}; },[onClose]);
   async function googleLogin() {
     if (!auth) {
-      setError("تسجيل الدخول غير جاهز: إعدادات Firebase ناقصة أو لم يتم تحميلها. راجع متغيرات VITE_FIREBASE في إعدادات Vercel.");
+      setError("تسجيل الدخول غير جاهز: إعدادات Firebase ناقصة. راجع إعدادات المشروع.");
       return;
     }
     setBusy(true); setError(""); setSuccess("");
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
     try {
-      await signInWithPopup(auth, provider);
-      setSuccess("تم تسجيل الدخول بنجاح.");
-      window.setTimeout(onClose, 500);
+      await signInWithRedirect(auth, provider);
     } catch (cause) {
-      const code = cause && typeof cause === "object" && "code" in cause ? String(cause.code) : "";
-      if (code === "auth/popup-blocked") {
-        try {
-          await signInWithRedirect(auth, provider);
-          return;
-        } catch (redirectError) {
-          setError(readableError(redirectError));
-        }
-      } else {
-        setError(readableError(cause));
-      }
-    } finally {
       setBusy(false);
+      setError(readableError(cause));
     }
   }
   async function sendCode(event:FormEvent<HTMLFormElement>) {
