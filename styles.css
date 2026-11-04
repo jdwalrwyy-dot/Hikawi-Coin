@@ -50,7 +50,7 @@ img,video,canvas,svg{max-width:100%}
 
 /* Pre-login welcome screen */
 .welcome-screen{position:relative;min-height:100svh;width:100%;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;padding:0 22px max(28px,env(safe-area-inset-bottom));background:#090316;color:#fff}
-.welcome-art{position:absolute;inset:0 0 26%;background-image:linear-gradient(180deg,rgba(8,2,22,.02) 48%,#090316 98%),url('/hikawi-login.webp');background-position:center top;background-size:cover;background-repeat:no-repeat}
+.welcome-art{position:absolute;inset:0 0 26%;background-image:linear-gradient(180deg,rgba(8,2,22,.02) 48%,#090316 98%),radial-gradient(ellipse at 50% 32%,#65347f 0%,#24102f 48%,#090316 82%);background-position:center top;background-size:cover;background-repeat:no-repeat}
 .welcome-actions{position:relative;z-index:1;width:min(100%,440px);display:flex;flex-direction:column;gap:14px;text-align:center}
 .welcome-primary,.welcome-secondary,.welcome-google{width:100%;min-height:58px;border-radius:999px;font:inherit;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:12px}
 .welcome-primary{border:1px solid #e4a7ff;background:linear-gradient(110deg,#d52bea,#7510a9);color:white;box-shadow:0 0 24px #c32de988}
