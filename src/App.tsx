@@ -128,8 +128,22 @@ function RoomView({ room, onBack }: { room: LiveRoomRecord; onBack: () => void }
   return <section className="screen active"><PageTitle eyebrow="VOICE ROOM" title={room.name} description={room.description || "أهلاً بيك في الغرفة"} /><div className="support-card"><span>♛</span><b>أنت داخل الغرفة</b><p>تم تسجيل انضمامك للغرفة. تشغيل المايك والصوت المباشر يحتاج تفعيل مزود الصوت ومفاتيح الخدمة على الخادم.</p><button className="gold-btn" type="button" onClick={onBack}>العودة للغرف</button></div><div className="section-heading"><h2>مقاعد الكوين</h2></div><div className="creator-grid">{Array.from({length: 8}, (_, index) => <div className="creator-card" key={index}><div className="creator-avatar ca2">♙</div><b>كوين {index + 1}</b><small>{index === 0 ? "مقعدك" : "متاح"}</small></div>)}</div></section>;
 }
 
+function WelcomePage({ onLogin, onRegister }: { onLogin: () => void; onRegister: () => void }) {
+  return <main className="welcome-screen" dir="rtl">
+    <div className="welcome-art" role="img" aria-label="تصميم حكاوي كوين الملكي" />
+    <section className="welcome-actions">
+      <button className="welcome-primary" type="button" onClick={onLogin}><span>♟</span> تسجيل الدخول</button>
+      <button className="welcome-secondary" type="button" onClick={onRegister}><span>⊕</span> إنشاء حساب جديد</button>
+      <div className="welcome-or"><span /> أو <span /></div>
+      <button className="welcome-google" type="button" onClick={onLogin}><b>G</b> المتابعة باستخدام Google</button>
+      <p>بمواصلة استخدامك للتطبيق فإنك توافق على <a href="/terms.html">شروط الاستخدام</a> و<a href="/privacy.html">سياسة الخصوصية</a>.</p>
+    </section>
+  </main>;
+}
+
 export default function App() {
   const [screen, setScreen] = useState<ScreenId>("home");
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [rooms, setRooms] = useState<LiveRoomRecord[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<LiveRoomRecord | null>(null);
