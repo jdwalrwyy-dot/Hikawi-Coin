@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { auth, isFirebaseConfigured, saveUserProfile } from "./firebase";
 import AuthDialog from "./auth/AuthDialog";
-import { demoRooms, navItems, type PageAction, type Room, type ScreenId } from "./data";
+import { navItems, type PageAction, type Room, type ScreenId } from "./data";
 import { createLiveRoom, joinLiveRoom, subscribePublicRooms, type LiveRoomRecord } from "./firebase";
 
 interface ModalInfo { title: string; message: string; }
@@ -13,8 +13,8 @@ function PageTitle({ eyebrow, title, description }: { eyebrow: string; title: st
 
 function RoomCard({ room, onJoin }: { room: Room | LiveRoomRecord; onJoin: (room: Room | LiveRoomRecord) => void }) {
   return <article className="room-card">
-    <div className={`room-cover ${room.coverClass}`}>{room.symbol}</div>
-    <div className="room-info"><b>{room.name}</b><small>{room.description}</small><div className="room-meta"><span>◉ {room.members}</span><span>♬ {room.category}</span></div></div>
+    <div className={`room-cover ${room.coverClass || "cover-gold"}`}>{room.symbol || "♛"}</div>
+    <div className="room-info"><b>{room.name}</b><small>{room.description}</small><div className="room-meta"><span>◉ {room.members ?? 1}</span><span>♬ {room.category}</span></div></div>
     <span className="room-live">مباشر</span>
     <button className="join-btn" type="button" onClick={() => onJoin(room)}>دخول</button>
   </article>;
