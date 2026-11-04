@@ -123,9 +123,15 @@ function AppModal({ info, onClose }: { info: ModalInfo; onClose: () => void }) {
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><button className="modal-close" type="button" onClick={onClose} aria-label="إغلاق">×</button><div className="modal-symbol">✦</div><h2 id="modal-title">{info.title}</h2><p>{info.message}</p><button className="gold-btn" type="button" onClick={onClose}>تمام</button></section></div>;
 }
 
-function RoomView({ room, onBack }: { room: LiveRoomRecord; onBack: () => void }) {\n  return <section className="screen active"><PageTitle eyebrow="VOICE ROOM" title={room.name} description={room.description || "أهلاً بيك في الغرفة"} /><div className="support-card"><span>♛</span><b>أنت داخل الغرفة</b><p>تم تسجيل انضمامك للغرفة. تشغيل المايك والصوت المباشر يحتاج تفعيل مزود الصوت ومفاتيح الخدمة على الخادم.</p><button className="gold-btn" type="button" onClick={onBack}>العودة للغرف</button></div><div className="section-heading"><h2>مقاعد الكوين</h2></div><div className="creator-grid">{Array.from({length: 8}, (_, index) => <div className="creator-card" key={index}><div className="creator-avatar ca2">♙</div><b>كوين {index + 1}</b><small>{index === 0 ? "مقعدك" : "متاح"}</small></div>)}</div></section>;\n}\n\nexport default function App() {
+function RoomView({ room, onBack }: { room: LiveRoomRecord; onBack: () => void }) {
+  return <section className="screen active"><PageTitle eyebrow="VOICE ROOM" title={room.name} description={room.description || "أهلاً بيك في الغرفة"} /><div className="support-card"><span>♛</span><b>أنت داخل الغرفة</b><p>تم تسجيل انضمامك للغرفة. تشغيل المايك والصوت المباشر يحتاج تفعيل مزود الصوت ومفاتيح الخدمة على الخادم.</p><button className="gold-btn" type="button" onClick={onBack}>العودة للغرف</button></div><div className="section-heading"><h2>مقاعد الكوين</h2></div><div className="creator-grid">{Array.from({length: 8}, (_, index) => <div className="creator-card" key={index}><div className="creator-avatar ca2">♙</div><b>كوين {index + 1}</b><small>{index === 0 ? "مقعدك" : "متاح"}</small></div>)}</div></section>;
+}
+
+export default function App() {
   const [screen, setScreen] = useState<ScreenId>("home");
-  const [authUser, setAuthUser] = useState<User | null>(null);\n  const [rooms, setRooms] = useState<LiveRoomRecord[]>([]);\n  const [selectedRoom, setSelectedRoom] = useState<LiveRoomRecord | null>(null);
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [rooms, setRooms] = useState<LiveRoomRecord[]>([]);
+  const [selectedRoom, setSelectedRoom] = useState<LiveRoomRecord | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [modal, setModal] = useState<ModalInfo | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -140,7 +146,23 @@ function RoomView({ room, onBack }: { room: LiveRoomRecord; onBack: () => void }
     });
   }, []);
   useEffect(() => { if (!toast) return undefined; const timer = window.setTimeout(() => setToast(""), 2300); return () => window.clearTimeout(timer); }, [toast]);
-  useEffect(() => {\n    if (!authUser || !isFirebaseConfigured) { setRooms([]); return undefined; }\n    try { return subscribePublicRooms(setRooms, (error) => setToast(error.message)); }\n    catch (error) { setToast(error instanceof Error ? error.message : "تعذر تحميل الغرف"); return undefined; }\n  }, [authUser]);\n  const onAction: PageAction = (_action, title, message) => setModal({ title: title ?? "حكاوي كوين", message: message ?? "الميزة دي هتتجهز في مرحلة لاحقة." });\n  const enterRoom = async (room: Room | LiveRoomRecord) => {\n    if (!authUser) { setAuthOpen(true); setToast("سجّل دخولك الأول علشان تدخل الغرفة"); return; }\n    if (!("id" in room)) { setToast("الغرفة دي بيانات قديمة تجريبية؛ اختار غرفة منشأة من قاعدة البيانات."); return; }\n    try { await joinLiveRoom(room.id, authUser); setSelectedRoom(room); setScreen("room" as ScreenId); }\n    catch (error) { setToast(error instanceof Error ? error.message : "تعذر دخول الغرفة"); }\n  };\n  const makeRoom = async (name: string, description: string, category: string) => {\n    if (!authUser) { setAuthOpen(true); throw new Error("سجّل دخولك الأول لإنشاء غرفة."); }\n    await createLiveRoom({ name, description, category, user: authUser });\n    setToast("تم إنشاء الغرفة بنجاح");\n  };
+  useEffect(() => {
+    if (!authUser || !isFirebaseConfigured) { setRooms([]); return undefined; }
+    try { return subscribePublicRooms(setRooms, (error) => setToast(error.message)); }
+    catch (error) { setToast(error instanceof Error ? error.message : "تعذر تحميل الغرف"); return undefined; }
+  }, [authUser]);
+  const onAction: PageAction = (_action, title, message) => setModal({ title: title ?? "حكاوي كوين", message: message ?? "الميزة دي هتتجهز في مرحلة لاحقة." });
+  const enterRoom = async (room: Room | LiveRoomRecord) => {
+    if (!authUser) { setAuthOpen(true); setToast("سجّل دخولك الأول علشان تدخل الغرفة"); return; }
+    if (!("id" in room)) { setToast("الغرفة دي بيانات قديمة تجريبية؛ اختار غرفة منشأة من قاعدة البيانات."); return; }
+    try { await joinLiveRoom(room.id, authUser); setSelectedRoom(room); setScreen("room" as ScreenId); }
+    catch (error) { setToast(error instanceof Error ? error.message : "تعذر دخول الغرفة"); }
+  };
+  const makeRoom = async (name: string, description: string, category: string) => {
+    if (!authUser) { setAuthOpen(true); throw new Error("سجّل دخولك الأول لإنشاء غرفة."); }
+    await createLiveRoom({ name, description, category, user: authUser });
+    setToast("تم إنشاء الغرفة بنجاح");
+  };
   const navigate = (next: ScreenId) => { setScreen(next); setSearchOpen(false); };
   const submitSearch = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); setToast(search.trim() ? "البحث الحقيقي هيتفعل بعد ربط قاعدة البيانات" : "اكتب كلمة للبحث"); };
   return <>
@@ -157,8 +179,9 @@ function RoomView({ room, onBack }: { room: LiveRoomRecord; onBack: () => void }
       </header>
       {searchOpen ? <form className="search-bar" onSubmit={submitSearch}><span>⌕</span><input autoFocus value={search} onChange={(event) => setSearch(event.target.value)} placeholder="دور على غرفة أو شخص أو لعبة..." aria-label="البحث العام" /><button type="button" onClick={() => { setSearchOpen(false); setSearch(""); }} aria-label="إغلاق البحث">✕</button></form> : null}
       <main id="mainContent">
-        {screen === "home" ? <HomePage navigate={navigate} onAction={onAction} /> : null}
-        {screen === "rooms" ? <RoomsPage onAction={onAction} /> : null}
+        {screen === "home" ? <HomePage navigate={navigate} rooms={rooms} onJoin={enterRoom} /> : null}
+        {screen === "rooms" ? <RoomsPage rooms={rooms} onJoin={enterRoom} onCreate={makeRoom} /> : null}
+        {screen === ("room" as ScreenId) && selectedRoom ? <RoomView room={selectedRoom} onBack={() => navigate("rooms")} /> : null}
         {screen === "live" ? <LivePage onAction={onAction} /> : null}
         {screen === "moments" ? <MomentsPage onAction={onAction} /> : null}
         {screen === "messages" ? <MessagesPage onAction={onAction} /> : null}
