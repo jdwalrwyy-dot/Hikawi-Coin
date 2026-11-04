@@ -1,4 +1,4 @@
-export type ScreenId = "home" | "rooms" | "live" | "moments" | "messages" | "games" | "profile" | "wallet" | "store" | "settings" | "support";
+export type ScreenId = "home" | "rooms" | "room" | "live" | "moments" | "messages" | "games" | "profile" | "wallet" | "store" | "settings" | "support";
 export type PageAction = (action: string, title?: string, message?: string) => void;
 
 export interface Room {
