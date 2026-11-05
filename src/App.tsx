@@ -45,7 +45,7 @@ export default function App() {
       <section className="section">
         <div className="section-heading"><div><span className="eyebrow">المجتمع</span><h2>أكثر الغرف نشاطاً 🔥</h2></div><button className="text-button">عرض الكل ←</button></div>
         <div className="top-rooms">
-          {["قمر الليل", "ملك حكاوي", "هواها مصري"].map((n, i) => <article className="top-room" key={n}><span className="rank">{i + 1}</span><div className="top-avatar">{["🌙","👑","🌸"][i]}</div><b>{n}</b><small>💎 {["5.4K","3.2K","1.8K"][i]}</small></article>)}
+          {["قمر الليل", "ملك حكاوي", "هواها مصري"].map((n) => <article className="top-room" key={n}><span className="rank">{i + 1}</span><div className="top-avatar">{["🌙","👑","🌸"][i]}</div><b>{n}</b><small>💎 {["5.4K","3.2K","1.8K"][i]}</small></article>)}
         </div>
       </section>
       <section className="pinned-room"><span className="pin-label">مثبتة</span><div className="pin-crown">👑</div><div className="pin-info"><b>غرفة الإدارة الرسمية</b><small>حكاوي كوين · غرفة موثقة</small></div><strong>12.6K <small>متصل</small></strong></section>
