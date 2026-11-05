@@ -1,7 +1,7 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { getAuth, type User } from "firebase/auth";
 import {
-  addDoc, collection, deleteDoc, doc, getDoc, getFirestore, limit, onSnapshot,
+  addDoc, collection, doc, getDoc, getFirestore, limit, onSnapshot,
   orderBy, query, runTransaction, serverTimestamp, setDoc, where,
   type Unsubscribe,
 } from "firebase/firestore";
