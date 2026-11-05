@@ -119,7 +119,6 @@ function RoomView({ room, onBack }: { room: LiveRoomRecord; onBack: () => void }
 
 export default function App() {
   const [screen, setScreen] = useState<ScreenId>("home");
-  const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [rooms, setRooms] = useState<LiveRoomRecord[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<LiveRoomRecord | null>(null);
