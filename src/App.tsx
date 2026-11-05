@@ -43,9 +43,14 @@ function friendlyError(error: unknown): string {
 }
 
 function phoneToE164(value: string): string {
-  const digits = value.trim().replace(/[^\d+]/g, "");
-  if (digits.startsWith("+")) return digits;
-  return "+20" + digits.replace(/^0+/, "");
+  const raw = value.trim();
+  const digits = raw.replace(/\D/g, "");
+  if (raw.startsWith("+")) return "+" + digits;
+  if (digits.startsWith("00")) return "+" + digits.slice(2);
+  if (digits.startsWith("20")) return "+" + digits;
+  if (digits.startsWith("0")) return "+20" + digits.slice(1);
+  if (digits.length === 10) return "+20" + digits;
+  return "+20" + digits;
 }
 
 function Avatar({ user, size = "normal" }: { user: Pick<User, "photoURL" | "displayName"> | null; size?: "normal" | "large" }) {
