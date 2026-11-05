@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   GoogleAuthProvider, RecaptchaVerifier, onAuthStateChanged,
   signInWithPhoneNumber, signInWithPopup, signOut,
@@ -132,7 +132,7 @@ export default function App() {
     finally { setBusy(false); }
   }
 
-  async function requestPhoneCode(event: React.FormEvent<HTMLFormElement>) {
+  async function requestPhoneCode(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!auth) return setNotice({ kind: "error", text: "إعدادات Firebase غير مكتملة على الموقع." });
     const normalized = phoneToE164(phone);
@@ -154,7 +154,7 @@ export default function App() {
     } finally { setBusy(false); }
   }
 
-  async function verifyPhoneCode(event: React.FormEvent<HTMLFormElement>) {
+  async function verifyPhoneCode(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!confirmation) return;
     if (!/^\d{6}$/.test(code.trim())) return setNotice({ kind: "error", text: "اكتب رمز التحقق المكوّن من 6 أرقام." });
@@ -170,7 +170,7 @@ export default function App() {
     catch (error) { setNotice({ kind: "error", text: friendlyError(error) }); }
   }
 
-  async function publishMoment(event: React.FormEvent<HTMLFormElement>) {
+  async function publishMoment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!user) return;
     setPosting(true);
@@ -192,7 +192,7 @@ export default function App() {
     } catch (error) { setNotice({ kind: "error", text: friendlyError(error) }); }
   }
 
-  async function submitComment(event: React.FormEvent<HTMLFormElement>) {
+  async function submitComment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!user || !commentMoment) return;
     try {
@@ -201,7 +201,7 @@ export default function App() {
     } catch (error) { setNotice({ kind: "error", text: friendlyError(error) }); }
   }
 
-  async function submitRoom(event: React.FormEvent<HTMLFormElement>) {
+  async function submitRoom(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!user) return;
     try {
