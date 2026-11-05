@@ -1,68 +1,344 @@
-import { useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import {
+  GoogleAuthProvider, RecaptchaVerifier, onAuthStateChanged,
+  signInWithPhoneNumber, signInWithPopup, signOut,
+  type ConfirmationResult, type User,
+} from "firebase/auth";
+import type { LiveRoomRecord, MomentComment, MomentRecord } from "./firebase";
+import {
+  auth, db, isFirebaseConfigured, saveUserProfile, subscribePublicRooms,
+  createLiveRoom, joinLiveRoom, subscribeMoments, createMoment, toggleMomentLike,
+  hasLikedMoment, subscribeMomentComments, addMomentComment,
+} from "./firebase";
 
-type Room = { name: string; host: string; count: string; mood: string; icon: string; tag?: string };
-const rooms: Room[] = [
-  { name: "سهرات العرب", host: "الأميرة ليلى", count: "2.4K", mood: "دردشة وسوالف", icon: "🌙", tag: "نشطة الآن" },
-  { name: "أصدقاء حكاوي", host: "ملك حكاوي", count: "1.9K", mood: "لمة الأصحاب", icon: "👑" },
-  { name: "ديوان الشعر", host: "شاعر الليل", count: "1.3K", mood: "شعر وطرب", icon: "🎙️" },
-  { name: "ضحكة ولمّة", host: "نجم السهرة", count: "860", mood: "ترفيه وتحديات", icon: "🎉" },
+type Tab = "home" | "live" | "moments" | "games" | "messages" | "profile";
+type Notice = { kind: "success" | "error" | "info"; text: string };
+const navigation: { id: Tab; icon: string; label: string }[] = [
+  { id: "home", icon: "⌂", label: "الرئيسية" },
+  { id: "live", icon: "◉", label: "مباشر" },
+  { id: "moments", icon: "▧", label: "لحظات" },
+  { id: "games", icon: "♟", label: "ألعاب" },
+  { id: "messages", icon: "▤", label: "رسائل" },
+  { id: "profile", icon: "♙", label: "حسابي" },
 ];
-const gifts = [
-  { name: "الأسد", price: "1000", icon: "🦁", rare: true },
-  { name: "الصقر", price: "800", icon: "🦅" },
-  { name: "التاج", price: "500", icon: "👑", rare: true },
-  { name: "الساعة", price: "300", icon: "⌚" },
-  { name: "العصفورة", price: "200", icon: "🐦" },
-  { name: "وردة ذهبية", price: "100", icon: "🌹" },
-  { name: "سيارة فاخرة", price: "1500", icon: "🏎️", rare: true },
-  { name: "يخت ملكي", price: "2000", icon: "🛥️", rare: true },
-  { name: "قصر", price: "3000", icon: "🏰", rare: true },
+const games = [
+  { q: "ما هي عاصمة مصر؟", answers: ["الإسكندرية", "القاهرة", "الأقصر"], correct: 1 },
+  { q: "كم عدد أيام الأسبوع؟", answers: ["5 أيام", "6 أيام", "7 أيام"], correct: 2 },
+  { q: "أي كوكب يُعرف بالكوكب الأحمر؟", answers: ["المريخ", "الزهرة", "زحل"], correct: 0 },
 ];
-const nav = [{ id: "home", label: "الرئيسية", icon: "⌂" }, { id: "live", label: "مباشر", icon: "◉" }, { id: "games", label: "ألعاب", icon: "♟" }, { id: "moments", label: "لحظات", icon: "✦" }, { id: "messages", label: "رسائل", icon: "▤" }, { id: "profile", label: "حسابي", icon: "♙" }];
+
+function friendlyError(error: unknown): string {
+  const code = typeof error === "object" && error !== null && "code" in error
+    ? String((error as { code?: unknown }).code) : "";
+  if (code.includes("auth/unauthorized-domain")) return "الدومين غير مضاف في Firebase Authorized domains.";
+  if (code.includes("auth/operation-not-allowed")) return "طريقة الدخول دي مش مفعّلة في Firebase Authentication.";
+  if (code.includes("auth/popup-closed-by-user")) return "تم إغلاق نافذة تسجيل الدخول قبل اكتمال العملية.";
+  if (code.includes("auth/invalid-phone-number")) return "رقم الهاتف غير صحيح. اكتب الرقم بصيغة مصرية.";
+  if (code.includes("auth/too-many-requests")) return "محاولات كتير خلال وقت قصير. جرّب بعد شوية.";
+  if (code.includes("auth/invalid-verification-code")) return "رمز التحقق غير صحيح.";
+  if (code.includes("auth/code-expired")) return "رمز التحقق انتهت صلاحيته. اطلب رمز جديد.";
+  if (code.includes("permission-denied")) return "Firebase رفض العملية بسبب قواعد الصلاحيات. راجع نشر firestore.rules وstorage.rules.";
+  if (error instanceof Error && error.message) return error.message;
+  return "حصل خطأ غير متوقع. جرّب مرة تانية.";
+}
+
+function phoneToE164(value: string): string {
+  const digits = value.trim().replace(/[^\d+]/g, "");
+  if (digits.startsWith("+")) return digits;
+  return "+20" + digits.replace(/^0+/, "");
+}
+
+function Avatar({ user, size = "normal" }: { user: Pick<User, "photoURL" | "displayName"> | null; size?: "normal" | "large" }) {
+  const className = size === "large" ? "avatar avatar-large" : "avatar";
+  return <div className={className}>{user?.photoURL ? <img src={user.photoURL} alt="" /> : <span>{(user?.displayName || "ح").slice(0, 1)}</span>}</div>;
+}
 
 export default function App() {
-  const [active, setActive] = useState("home");
-  const [query, setQuery] = useState("");
-  const [giftTab, setGiftTab] = useState("الكل");
-  const [selectedGift, setSelectedGift] = useState("الأسد");
-  const filtered = useMemo(() => rooms.filter(r => (r.name + r.host).includes(query)), [query]);
-  const shownGifts = gifts.filter(g => giftTab === "الكل" || (giftTab === "فخمة" ? g.rare : !g.rare));
+  const [user, setUser] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState<Tab>("home");
+  const [notice, setNotice] = useState<Notice | null>(null);
+  const [phone, setPhone] = useState("");
+  const [code, setCode] = useState("");
+  const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
+  const recaptchaRef = useRef<RecaptchaVerifier | null>(null);
+  const [rooms, setRooms] = useState<LiveRoomRecord[]>([]);
+  const [moments, setMoments] = useState<MomentRecord[]>([]);
+  const [likedIds, setLikedIds] = useState<string[]>([]);
+  const [momentText, setMomentText] = useState("");
+  const [momentFile, setMomentFile] = useState<File | null>(null);
+  const [posting, setPosting] = useState(false);
+  const [createRoomOpen, setCreateRoomOpen] = useState(false);
+  const [roomName, setRoomName] = useState("");
+  const [roomDescription, setRoomDescription] = useState("");
+  const [roomCategory, setRoomCategory] = useState("دردشة");
+  const [selectedRoom, setSelectedRoom] = useState<LiveRoomRecord | null>(null);
+  const [commentMoment, setCommentMoment] = useState<MomentRecord | null>(null);
+  const [comments, setComments] = useState<MomentComment[]>([]);
+  const [commentText, setCommentText] = useState("");
+  const [gameIndex, setGameIndex] = useState(0);
+  const [gameScore, setGameScore] = useState(0);
+  const [answered, setAnswered] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!auth) { setAuthReady(true); return; }
+    return onAuthStateChanged(auth, async (nextUser) => {
+      setUser(nextUser);
+      if (nextUser) {
+        try { await saveUserProfile(nextUser); }
+        catch (error) { setNotice({ kind: "error", text: friendlyError(error) }); }
+      }
+      setAuthReady(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!user || !db) { setRooms([]); setMoments([]); return; }
+    const stopRooms = subscribePublicRooms(setRooms, (error) => setNotice({ kind: "error", text: friendlyError(error) }));
+    const stopMoments = subscribeMoments(setMoments, (error) => setNotice({ kind: "error", text: friendlyError(error) }));
+    return () => { stopRooms(); stopMoments(); };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || !db || moments.length === 0) { setLikedIds([]); return; }
+    let active = true;
+    void Promise.all(moments.map(async (moment) => ({ id: moment.id, liked: await hasLikedMoment(moment.id, user.uid) })))
+      .then((items) => { if (active) setLikedIds(items.filter((item) => item.liked).map((item) => item.id)); })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, [user, moments]);
+
+  useEffect(() => {
+    if (!commentMoment) { setComments([]); return; }
+    const stop = subscribeMomentComments(
+      commentMoment.id,
+      setComments,
+      (error) => setNotice({ kind: "error", text: friendlyError(error) }),
+    );
+    return () => stop();
+  }, [commentMoment]);
+
+  useEffect(() => () => { recaptchaRef.current?.clear(); }, []);
+
+  async function googleLogin() {
+    if (!auth) return setNotice({ kind: "error", text: "إعدادات Firebase غير مكتملة على الموقع." });
+    setBusy(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+      await signInWithPopup(auth, provider);
+    } catch (error) { setNotice({ kind: "error", text: friendlyError(error) }); }
+    finally { setBusy(false); }
+  }
+
+  async function requestPhoneCode(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!auth) return setNotice({ kind: "error", text: "إعدادات Firebase غير مكتملة على الموقع." });
+    const normalized = phoneToE164(phone);
+    if (!/^\+[1-9]\d{7,14}$/.test(normalized)) {
+      return setNotice({ kind: "error", text: "اكتب رقم هاتف صحيح، مثال: 01012345678." });
+    }
+    setBusy(true);
+    try {
+      if (!recaptchaRef.current) {
+        recaptchaRef.current = new RecaptchaVerifier(auth, "recaptcha-container", { size: "invisible" });
+      }
+      const result = await signInWithPhoneNumber(auth, normalized, recaptchaRef.current);
+      setConfirmation(result);
+      setNotice({ kind: "success", text: "بعتنالك رمز التحقق برسالة SMS." });
+    } catch (error) {
+      recaptchaRef.current?.clear();
+      recaptchaRef.current = null;
+      setNotice({ kind: "error", text: friendlyError(error) });
+    } finally { setBusy(false); }
+  }
+
+  async function verifyPhoneCode(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!confirmation) return;
+    if (!/^\d{6}$/.test(code.trim())) return setNotice({ kind: "error", text: "اكتب رمز التحقق المكوّن من 6 أرقام." });
+    setBusy(true);
+    try { await confirmation.confirm(code.trim()); }
+    catch (error) { setNotice({ kind: "error", text: friendlyError(error) }); }
+    finally { setBusy(false); }
+  }
+
+  async function logout() {
+    if (!auth) return;
+    try { await signOut(auth); setTab("home"); setSelectedRoom(null); setConfirmation(null); }
+    catch (error) { setNotice({ kind: "error", text: friendlyError(error) }); }
+  }
+
+  async function publishMoment(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!user) return;
+    setPosting(true);
+    try {
+      await createMoment({ user, text: momentText, file: momentFile });
+      setMomentText(""); setMomentFile(null);
+      const input = document.getElementById("moment-file") as HTMLInputElement | null;
+      if (input) input.value = "";
+      setNotice({ kind: "success", text: "تم نشر اللحظة بنجاح." });
+    } catch (error) { setNotice({ kind: "error", text: friendlyError(error) }); }
+    finally { setPosting(false); }
+  }
+
+  async function likeMoment(moment: MomentRecord) {
+    if (!user) return;
+    try {
+      const liked = await toggleMomentLike(moment.id, user.uid);
+      setLikedIds((current) => liked ? [...current, moment.id] : current.filter((id) => id !== moment.id));
+    } catch (error) { setNotice({ kind: "error", text: friendlyError(error) }); }
+  }
+
+  async function submitComment(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!user || !commentMoment) return;
+    try {
+      await addMomentComment(commentMoment.id, user, commentText);
+      setCommentText("");
+    } catch (error) { setNotice({ kind: "error", text: friendlyError(error) }); }
+  }
+
+  async function submitRoom(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!user) return;
+    try {
+      const room = await createLiveRoom({ name: roomName, description: roomDescription, category: roomCategory, user });
+      setRooms((current) => [room, ...current]);
+      setSelectedRoom(room);
+      setCreateRoomOpen(false);
+      setRoomName(""); setRoomDescription("");
+      setNotice({ kind: "success", text: "اتعملت الغرفة واتسجلت في قاعدة البيانات." });
+    } catch (error) { setNotice({ kind: "error", text: friendlyError(error) }); }
+  }
+
+  async function enterRoom(room: LiveRoomRecord) {
+    if (!user) return;
+    try {
+      await joinLiveRoom(room.id, user);
+      setSelectedRoom(room);
+    } catch (error) { setNotice({ kind: "error", text: friendlyError(error) }); }
+  }
+
+  if (!authReady) return <div className="loading-screen"><div className="brand-mark">ح</div><strong>حكاوي كوين</strong><span className="loader" /><small>بنجهز مكانك...</small></div>;
+
+  if (!user) {
+    return (
+      <main className="auth-screen" dir="rtl" lang="ar">
+        <div className="auth-glow auth-glow-one" /><div className="auth-glow auth-glow-two" />
+        <header className="auth-header"><div className="brand-lockup"><div className="brand-mark">ح</div><div><b>حكاوي كوين</b><small>كل حكاية ليها مكان</small></div></div><span className="secure-label">● مجتمعك في مكان واحد</span></header>
+        <section className="auth-layout">
+          <div className="auth-story"><span className="kicker">أهلاً بيك في عالمك</span><h1>قريبين من بعض،<br /><em>مهما بعدت المسافات.</em></h1><p>غرف صوتية، بث مباشر، لحظات من يومك، وأصحابك في مساحة واحدة.</p>
+            <div className="feature-pills"><span>🎙️ غرف صوتية</span><span>📱 بث مباشر</span><span>✨ لحظات</span><span>💬 رسائل</span></div>
+            <div className="auth-art"><div className="art-orb orb-a">✦</div><div className="art-orb orb-b">♬</div><div className="art-crown">♛</div><div className="art-disc">ح</div><div className="art-ring" /></div>
+          </div>
+          <section className="auth-card">
+            <div className="card-top"><span className="kicker">ابدأ رحلتك</span><h2>سجّل دخولك</h2><p>اختار الطريقة المناسبة ليك وادخل حكاوي كوين.</p></div>
+            <button className="google-login" type="button" onClick={googleLogin} disabled={busy || !isFirebaseConfigured}><span className="google-g">G</span>{busy ? "جاري الاتصال..." : "المتابعة باستخدام Google"}</button>
+            <div className="or-divider"><span>أو برقم الموبايل</span></div>
+            {!confirmation ? (
+              <form onSubmit={requestPhoneCode} className="auth-form">
+                <label htmlFor="phone-number">رقم الهاتف</label>
+                <div className="phone-field"><span>🇪🇬 +20</span><input id="phone-number" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="10xxxxxxxx" inputMode="tel" autoComplete="tel" /></div>
+                <button className="primary-button full" type="submit" disabled={busy || !isFirebaseConfigured}>{busy ? "جاري إرسال الرمز..." : "إرسال رمز التحقق"}</button>
+              </form>
+            ) : (
+              <form onSubmit={verifyPhoneCode} className="auth-form">
+                <label htmlFor="verify-code">رمز التحقق</label>
+                <input className="code-field" id="verify-code" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="● ● ● ● ● ●" inputMode="numeric" autoComplete="one-time-code" />
+                <button className="primary-button full" type="submit" disabled={busy}>{busy ? "جاري التحقق..." : "تأكيد الدخول"}</button>
+                <button type="button" className="text-action" onClick={() => { setConfirmation(null); setCode(""); }}>تغيير رقم الهاتف</button>
+              </form>
+            )}
+            <div id="recaptcha-container" />
+            {!isFirebaseConfigured && <div className="config-alert">إعدادات Firebase غير موجودة في بيئة الموقع. أضف مفاتيح VITE_FIREBASE_* إلى إعدادات Vercel.</div>}
+            <p className="legal-note">بالمتابعة، أنت توافق على شروط الاستخدام وسياسة الخصوصية الخاصة بحكاوي كوين.</p>
+          </section>
+        </section>
+        {notice && <div className={`toast toast-${notice.kind}`} role="status">{notice.text}<button onClick={() => setNotice(null)}>×</button></div>}
+      </main>
+    );
+  }
+
+  if (selectedRoom) {
+    return (
+      <main className="room-screen" dir="rtl" lang="ar">
+        <header className="subpage-header"><button className="round-button" onClick={() => setSelectedRoom(null)}>←</button><div><b>{selectedRoom.name}</b><small>{selectedRoom.category} · غرفة صوتية</small></div><span className="live-chip">غرفة عامة</span></header>
+        <section className="room-stage"><span className="kicker">أهلاً بيك في</span><h1>{selectedRoom.name}</h1><p>{selectedRoom.description || "لمة حلوة وأصحاب جداد."}</p><div className="room-owner"><Avatar user={user} /><span><b>{selectedRoom.ownerName}</b><small>صاحب الغرفة</small></span></div></section>
+        <section className="mic-panel"><div className="section-title"><div><span className="kicker">مجلس حكاوي</span><h2>مقاعد المايك</h2></div><span className="subtle">27 مقعد</span></div><div className="mic-grid">{Array.from({ length: 27 }, (_, index) => <div className={index === 0 ? "mic-seat occupied" : "mic-seat"} key={index}><span>{index === 0 ? "🎙️" : "＋"}</span><small>{index === 0 ? "أنت" : "متاح"}</small></div>)}</div></section>
+        <div className="room-warning">تم تسجيل دخولك للغرفة في قاعدة البيانات. الصوت المباشر ومقاعد المايك تحتاج ربط مزود RTC آمن قبل تشغيلها.</div>
+        <div className="room-controls"><button disabled className="primary-button">🎙️ المايك غير متاح حاليًا</button><button className="ghost-button" onClick={() => setSelectedRoom(null)}>مغادرة الغرفة</button></div>
+        {notice && <div className={`toast toast-${notice.kind}`} role="status">{notice.text}<button onClick={() => setNotice(null)}>×</button></div>}
+      </main>
+    );
+  }
+
   return (
     <main className="app-shell" dir="rtl" lang="ar">
-      <header className="topbar">
-        <div className="profile"><div className="avatar">👑</div><div><b>ملك حكاوي</b><small>المستوى 56</small></div></div>
-        <div className="brand"><span className="brand-crown">♛</span><strong>حكاوي كوين</strong><small>HIKAWI COIN</small></div>
-        <button className="icon-button" aria-label="الإشعارات">♧<i>3</i></button>
+      <header className="main-header">
+        <div className="brand-lockup compact"><div className="brand-mark">ح</div><div><b>حكاوي كوين</b><small>HIKAWI COIN</small></div></div>
+        <div className="header-actions"><button className="header-icon" onClick={() => setNotice({ kind: "info", text: "كل إشعاراتك هتظهر هنا بعد تفعيل خدمة الإشعارات." })} aria-label="الإشعارات">♧</button><Avatar user={user} /></div>
       </header>
-      <section className="wallet-row">
-        <div className="wallet"><span>🪙</span><b>12,450</b><button>＋</button></div>
-        <div className="wallet"><span>💎</span><b>86,300</b><button>＋</button></div>
-      </section>
-      <section className="hero">
-        <div className="hero-copy"><span className="eyebrow">أهلاً بيك في عالم حكاوي</span><h1>حكاوي كوين</h1><p>غرف صوتية · بث مباشر · ألعاب · فعاليات</p><button onClick={() => setActive("live")}>اكتشف البث المباشر <span>←</span></button></div>
-        <div className="hero-lion">🦁</div><span className="hero-spark">✦</span>
-      </section>
-      <section className="section">
-        <div className="section-heading"><div><span className="eyebrow">المجتمع</span><h2>أكثر الغرف نشاطاً 🔥</h2></div><button className="text-button">عرض الكل ←</button></div>
-        <div className="top-rooms">
-          {["قمر الليل", "ملك حكاوي", "هواها مصري"].map((n, i) => <article className="top-room" key={n}><span className="rank">{i + 1}</span><div className="top-avatar">{["🌙","👑","🌸"][i]}</div><b>{n}</b><small>💎 {["5.4K","3.2K","1.8K"][i]}</small></article>)}
-        </div>
-      </section>
-      <section className="pinned-room"><span className="pin-label">مثبتة</span><div className="pin-crown">👑</div><div className="pin-info"><b>غرفة الإدارة الرسمية</b><small>حكاوي كوين · غرفة موثقة</small></div><strong>12.6K <small>متصل</small></strong></section>
-      <section className="section room-section">
-        <div className="section-heading"><div><span className="eyebrow">ادخل واتعرف على ناس جديدة</span><h2>الغرف الصوتية العامة</h2></div><span className="live-dot">● مباشر</span></div>
-        <label className="search"><span>⌕</span><input value={query} onChange={e => setQuery(e.target.value)} placeholder="ابحث عن غرفة أو مضيف..." /></label>
-        <div className="room-list">{filtered.map((r) => <article className="room-card" key={r.name}><div className="room-art">{r.icon}<span>●</span></div><div className="room-info"><b>{r.name}</b><small>{r.mood} · {r.host}</small><small>♟ {r.count} متصل</small></div><button className="join-button" onClick={() => setActive("live")}>دخول</button></article>)}</div>
-        {filtered.length === 0 && <p className="empty">مفيش غرف مطابقة للبحث.</p>}
-      </section>
-      <section className="section gift-section">
-        <div className="section-heading"><div><span className="eyebrow">عبّر عن تقديرك</span><h2>متجر الهدايا 🎁</h2></div><button className="text-button">كل الهدايا ←</button></div>
-        <div className="gift-tabs">{["الكل","فخمة","مميزة"].map(t => <button key={t} className={giftTab === t ? "chosen" : ""} onClick={() => setGiftTab(t)}>{t}</button>)}</div>
-        <div className="gift-grid">{shownGifts.map(g => <button className={selectedGift === g.name ? "gift-card selected" : "gift-card"} key={g.name} onClick={() => setSelectedGift(g.name)}><span className="gift-art">{g.icon}</span><b>{g.name}</b><small>💎 {g.price}</small>{g.rare && <i>فخمة</i>}</button>)}</div>
-        <div className="gift-selected">الهدية المختارة: <b>{selectedGift}</b><button onClick={() => alert("اختيار الهدية للمعاينة فقط — الإرسال سيتصل بالخادم لاحقاً.")}>معاينة الإرسال</button></div>
-      </section>
-      <button className="create-room" onClick={() => alert("إنشاء الغرفة سيتصل بخدمة الغرف بعد ربط الخادم.")}>＋ <span>إنشاء غرفة</span></button>
-      <nav className="bottom-nav">{nav.map(n => <button key={n.id} className={active === n.id ? "active" : ""} onClick={() => setActive(n.id)}><span>{n.icon}</span>{n.label}</button>)}</nav>
+
+      {tab === "home" && <section className="page-content">
+        <div className="welcome-strip"><div><span className="kicker">مساء الخير</span><h1>{user.displayName || "صاحب حكاوي"} 👋</h1><p>مستنيين حكايتك النهارده.</p></div><div className="welcome-symbol">✦</div></div>
+        <section className="section-block">
+          <div className="section-title"><div><span className="kicker">اتكلم واتعرف</span><h2>الغرف الصوتية</h2></div><button className="outline-small" onClick={() => setCreateRoomOpen(true)}>＋ غرفة جديدة</button></div>
+          <div className="room-categories">{["الكل","دردشة","تعرف على أصحاب","موسيقى","ألعاب"].map((x) => <button key={x} onClick={() => setRoomCategory(x)} className={roomCategory === x ? "category-active" : ""}>{x}</button>)}</div>
+          {rooms.length === 0 ? <div className="empty-card"><div className="empty-icon">🎙️</div><h3>لسه مفيش غرف عامة</h3><p>ابدأ اللمة واعمل أول غرفة صوتية في حكاوي.</p><button className="primary-button" onClick={() => setCreateRoomOpen(true)}>إنشاء أول غرفة</button></div> :
+            <div className="rooms-grid">{rooms.map((room, index) => <article className="room-tile" key={room.id}><div className={`room-cover cover-${index % 4}`}><span>{["🎙️","🌙","🎮","☕"][index % 4]}</span><small>غرفة عامة</small></div><div className="room-tile-body"><b>{room.name}</b><p>{room.description || room.category || "غرفة حكاوي"}</p><div><span>👤 {room.ownerName}</span><button onClick={() => void enterRoom(room)}>دخول الغرفة</button></div></div></article>)}</div>}
+        </section>
+        <section className="promo-card"><div><span className="kicker">حكاوي تجمعنا</span><h2>صوتك مسموع هنا</h2><p>شارك أصحابك لحظاتك وافتح مساحة جديدة للكلام.</p></div><div className="promo-emoji">💬</div></section>
+      </section>}
+
+      {tab === "live" && <section className="page-content">
+        <div className="page-heading"><span className="kicker">شاهد وشارك</span><h1>البث المباشر</h1><p>تابع صناع المحتوى وشارك في البثوث الحية.</p></div>
+        <div className="live-empty"><div className="live-emblem">▶</div><h2>منصة البث في مرحلة التجهيز</h2><p>هنربط الفيديو المباشر والهدايا والتعليقات ومشاركة الضيوف بخدمة بث حقيقية، بدل عرض بث تجريبي على إنه مباشر.</p><button className="primary-button" onClick={() => setNotice({ kind: "info", text: "مطلوب إعداد مزود بث RTC ومفاتيح الخادم قبل بدء بث حقيقي." })}>تفاصيل تجهيز البث</button></div>
+      </section>}
+
+      {tab === "moments" && <section className="page-content">
+        <div className="page-heading"><span className="kicker">شارك يومك</span><h1>اللحظات</h1><p>منشورات وصور وفيديوهات من مجتمع حكاوي.</p></div>
+        <form className="composer-card" onSubmit={publishMoment}>
+          <div className="composer-head"><Avatar user={user} /><div><b>{user.displayName || "عضو حكاوي"}</b><small>مشاركة عامة</small></div></div>
+          <textarea value={momentText} onChange={(e) => setMomentText(e.target.value)} placeholder="بتفكر في إيه؟ احكيلنا..." rows={3} maxLength={5000} />
+          {momentFile && <div className="file-chip">📎 {momentFile.name}<button type="button" onClick={() => setMomentFile(null)}>×</button></div>}
+          <div className="composer-actions"><label className="file-pick" htmlFor="moment-file">▧ صورة أو فيديو</label><input id="moment-file" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime" onChange={(e) => setMomentFile(e.target.files?.[0] || null)} /><button className="primary-button" type="submit" disabled={posting || (!momentText.trim() && !momentFile)}>{posting ? "جاري النشر..." : "نشر اللحظة"}</button></div>
+        </form>
+        {moments.length === 0 ? <div className="empty-card"><div className="empty-icon">✦</div><h3>ابدأ أول لحظة</h3><p>اكتب منشور أو شارك صورة وفيديو يظهروا للمجتمع.</p></div> :
+          <div className="moments-feed">{moments.map((moment) => <article className="moment-card" key={moment.id}>
+            <div className="moment-author"><div className="avatar">{moment.authorPhotoURL ? <img src={moment.authorPhotoURL} alt="" /> : <span>{moment.authorName.slice(0,1)}</span>}</div><div><b>{moment.authorName}</b><small>من مجتمع حكاوي · منشور عام</small></div><button className="more-button" onClick={() => setNotice({ kind: "info", text: "إدارة المنشور والإبلاغ هتتوفر في أدوات المجتمع." })}>•••</button></div>
+            {moment.text && <p className="moment-text">{moment.text}</p>}
+            {moment.mediaUrl && (moment.mediaType === "video" ? <video className="moment-media" src={moment.mediaUrl} controls playsInline preload="metadata" /> : <img className="moment-media" src={moment.mediaUrl} alt="مرفق من لحظات حكاوي" loading="lazy" />)}
+            <div className="moment-counts"><span>♥ {moment.likesCount || 0} إعجاب</span><button onClick={() => setCommentMoment(moment)}>التعليقات</button></div>
+            <div className="moment-actions"><button className={likedIds.includes(moment.id) ? "liked" : ""} onClick={() => void likeMoment(moment)}>♡ إعجاب</button><button onClick={() => setCommentMoment(moment)}>◯ تعليق</button><button onClick={() => { void navigator.clipboard?.writeText(location.href).then(() => setNotice({kind:"success",text:"اتنسخ رابط الموقع."})).catch(() => setNotice({kind:"info",text:"انسخ رابط الصفحة من شريط المتصفح."})); }}>↗ مشاركة</button></div>
+          </article>)}</div>}
+      </section>}
+
+      {tab === "games" && <section className="page-content">
+        <div className="page-heading"><span className="kicker">العب مع أصحابك</span><h1>الألعاب</h1><p>تحديات خفيفة لحد ما نربط الألعاب الجماعية.</p></div>
+        <div className="games-grid"><article className="game-card"><span>🧠</span><h3>تحدي المعلومات</h3><p>اختبر معلوماتك في 3 أسئلة.</p><b>نقاطك: {gameScore}</b></article><article className="game-card"><span>🎲</span><h3>لودو</h3><p>اللعب الجماعي أونلاين قيد الربط.</p><small>قريبًا</small></article><article className="game-card"><span>🃏</span><h3>ورق وكوتشينة</h3><p>غرف لعب مع الأصدقاء.</p><small>قريبًا</small></article></div>
+        <div className="quiz-card"><span className="kicker">تحدي سريع · {gameIndex + 1} من {games.length}</span><h2>{games[gameIndex].q}</h2><div className="quiz-options">{games[gameIndex].answers.map((answer, i) => <button key={answer} disabled={answered !== null} className={answered === i ? (i === games[gameIndex].correct ? "answer-correct" : "answer-wrong") : ""} onClick={() => {setAnswered(i);if(i === games[gameIndex].correct)setGameScore((s)=>s+1);}}>{answer}</button>)}</div>{answered !== null && <button className="primary-button" onClick={() => {setGameIndex((x)=>(x+1)%games.length);setAnswered(null);}}>السؤال التالي</button>}</div>
+      </section>}
+
+      {tab === "messages" && <section className="page-content">
+        <div className="page-heading"><span className="kicker">قريبين دايمًا</span><h1>الرسائل</h1><p>محادثاتك ومكالماتك الخاصة.</p></div>
+        <div className="messages-empty"><div className="chat-bubbles">💬</div><h2>محادثاتك في مكانها</h2><p>واجهة الرسائل جاهزة للتصميم، لكن المحادثات المشفرة والمكالمات الصوتية والمرئية تحتاج خدمة محادثات واتصال وخادم لإدارة الأصدقاء. مش هنفتح رسائل وهمية أو مكالمات لا تتصل.</p><button className="ghost-button" onClick={() => setNotice({ kind: "info", text: "المرحلة التالية: الأصدقاء والمحادثات والمكالمات عبر RTC." })}>عرض حالة تجهيز الرسائل</button></div>
+      </section>}
+
+      {tab === "profile" && <section className="page-content">
+        <div className="profile-hero"><Avatar user={user} size="large" /><h1>{user.displayName || "عضو حكاوي"}</h1><p>{user.email || user.phoneNumber || "حساب حكاوي"}</p><span className="member-badge">عضو في حكاوي كوين</span></div>
+        <div className="settings-list"><button onClick={() => setNotice({ kind: "info", text: "إعدادات الملف الشخصي قيد الإضافة." })}>✎ <span>تعديل الملف الشخصي</span> <b>←</b></button><button onClick={() => setNotice({ kind: "info", text: "إعدادات الخصوصية والأمان قيد الإضافة." })}>◈ <span>الخصوصية والأمان</span> <b>←</b></button><button onClick={() => setNotice({ kind: "info", text: "سجل النشاط والمعاملات قيد الإضافة." })}>◷ <span>سجل النشاط</span> <b>←</b></button><button onClick={() => void logout()} className="logout-row">↪ <span>تسجيل الخروج</span> <b>←</b></button></div>
+      </section>}
+
+      <nav className="bottom-nav">{navigation.map((item) => <button key={item.id} className={tab === item.id ? "nav-active" : ""} onClick={() => setTab(item.id)}><span>{item.icon}</span><small>{item.label}</small></button>)}</nav>
+
+      {createRoomOpen && <div className="modal-backdrop" onClick={() => setCreateRoomOpen(false)}><form className="modal-card" onSubmit={submitRoom} onClick={(e) => e.stopPropagation()}><div className="modal-heading"><div><span className="kicker">ابدأ اللمة</span><h2>إنشاء غرفة صوتية</h2></div><button type="button" onClick={() => setCreateRoomOpen(false)}>×</button></div><label>اسم الغرفة<input required minLength={3} maxLength={40} value={roomName} onChange={(e)=>setRoomName(e.target.value)} placeholder="مثلاً: سهرات حكاوي" /></label><label>وصف الغرفة<textarea value={roomDescription} maxLength={160} onChange={(e)=>setRoomDescription(e.target.value)} placeholder="قول للناس هيتكلموا عن إيه..." /></label><label>التصنيف<select value={roomCategory} onChange={(e)=>setRoomCategory(e.target.value)}><option>دردشة</option><option>تعرف على أصحاب</option><option>موسيقى</option><option>ألعاب</option><option>شعر وثقافة</option></select></label><button className="primary-button full" type="submit">إنشاء الغرفة</button></form></div>}
+
+      {commentMoment && <div className="modal-backdrop" onClick={() => setCommentMoment(null)}><section className="modal-card comments-modal" onClick={(e)=>e.stopPropagation()}><div className="modal-heading"><div><span className="kicker">نقاش المجتمع</span><h2>التعليقات</h2></div><button onClick={()=>setCommentMoment(null)}>×</button></div><div className="comments-list">{comments.length===0?<p className="subtle">لسه مفيش تعليقات. ابدأ الحوار.</p>:comments.map((comment)=><div className="comment-row" key={comment.id}><b>{comment.authorName}</b><p>{comment.text}</p></div>)}</div><form className="comment-form" onSubmit={submitComment}><input value={commentText} onChange={(e)=>setCommentText(e.target.value)} placeholder="اكتب تعليقك..." maxLength={1000} /><button className="primary-button" type="submit" disabled={!commentText.trim()}>إرسال</button></form></section></div>}
+
+      {notice && <div className={`toast toast-${notice.kind}`} role="status">{notice.text}<button onClick={() => setNotice(null)}>×</button></div>}
     </main>
   );
 }
