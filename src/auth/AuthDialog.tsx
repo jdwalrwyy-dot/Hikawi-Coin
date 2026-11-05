@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { GoogleAuthProvider, RecaptchaVerifier, signInWithPhoneNumber, signInWithPopup, type ConfirmationResult } from "firebase/auth";
 import { auth } from "../firebase";
 
-interface AuthDialogProps { onClose: () => void; configured: boolean; mode?: "login" | "register"; }
+interface AuthDialogProps { onClose: () => void; configured: boolean; mode?: "login" | "register"; method?: "all" | "phone"; }
 function readableError(error: unknown): string {
   if (!(error instanceof Error)) return "حصل خطأ غير متوقع. حاول تاني.";
   const code = "code" in error && typeof error.code === "string" ? error.code : "";
@@ -19,7 +19,7 @@ function readableError(error: unknown): string {
   };
   return messages[code] ?? "تعذر تسجيل الدخول. راجع إعدادات Firebase وحاول مرة أخرى.";
 }
-export default function AuthDialog({ onClose, configured, mode = "login" }: AuthDialogProps) {
+export default function AuthDialog({ onClose, configured, mode = "login", method = "all" }: AuthDialogProps) {
   const [phone,setPhone]=useState("+20"); const [code,setCode]=useState("");
   const [confirmation,setConfirmation]=useState<ConfirmationResult|null>(null);
   const [busy,setBusy]=useState(false); const [error,setError]=useState(""); const [success,setSuccess]=useState("");
@@ -55,8 +55,8 @@ export default function AuthDialog({ onClose, configured, mode = "login" }: Auth
       <div className="modal-symbol">♛</div><h2 id="auth-title">{mode === "register" ? "إنشاء حساب في حكاوي كوين" : "أهلاً بيك في حكاوي كوين"}</h2>
       <p className="auth-intro">{mode === "register" ? "اختار Google أو رقم الموبايل لإنشاء حسابك والبدء." : "سجّل دخولك عشان تحتفظ بحسابك وتبدأ حكايتك."}</p>
       {!configured?<p className="auth-error">تسجيل الدخول مش متاح لسه: إعدادات Firebase الخاصة بالمشروع لم تُضف. أضف القيم الموجودة في ملف .env.example إلى إعدادات بيئة التشغيل.</p>:<>
-        <button className="auth-action primary" type="button" disabled={busy} onClick={()=>void googleLogin()}>◉　المتابعة باستخدام Google</button>
-        <div className="auth-divider">أو رقم الموبايل</div>
+        {method !== "phone" ? <button className="auth-action primary" type="button" disabled={busy} onClick={()=>void googleLogin()}>◉　المتابعة باستخدام Google</button> : null}
+        {method !== "phone" ? <div className="auth-divider">أو رقم الموبايل</div> : <p className="auth-intro">اكتب رقم موبايلك علشان نبعتلك رمز تأكيد برسالة SMS.</p>}
         {!confirmation?<form onSubmit={event=>void sendCode(event)}><input type="tel" autoComplete="tel" value={phone} onChange={event=>setPhone(event.target.value)} placeholder="+201xxxxxxxxx" aria-label="رقم الموبايل بصيغة دولية" required /><button className="auth-action" type="submit" disabled={busy||phone.trim().length<8}>{busy?"جاري الإرسال...":"ابعت رمز التأكيد"}</button></form>:<form onSubmit={event=>void verifyCode(event)}><input inputMode="numeric" autoComplete="one-time-code" value={code} onChange={event=>setCode(event.target.value)} placeholder="اكتب رمز التأكيد" aria-label="رمز التأكيد" required /><button className="auth-action primary" type="submit" disabled={busy||code.trim().length<4}>{busy?"جاري التأكيد...":"تأكيد الرقم"}</button></form>}
         <div id="phone-recaptcha" />
       </>}
