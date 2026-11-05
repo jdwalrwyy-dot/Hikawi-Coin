@@ -106,3 +106,12 @@ img,video,canvas,svg{max-width:100%}
 .welcome-actions{position:absolute;z-index:2;left:50%;transform:translateX(-50%);bottom:max(26px,env(safe-area-inset-bottom));width:min(calc(100% - 34px),420px);gap:12px}
 .welcome-actions.auth-active{bottom:max(12px,env(safe-area-inset-bottom))}
 @media (max-width:480px){.welcome-primary,.welcome-secondary{min-height:52px}}
+
+
+/* Twenty-seven voice-room seat layout */
+.mic-seat-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.mic-seat{min-width:0;padding:12px 6px;background:linear-gradient(145deg,#1b1928,#12111b);border:1px solid rgba(232,199,122,.18)}
+.mic-seat .creator-avatar{width:46px;height:46px;margin:0 auto 8px;border:1px solid rgba(232,199,122,.25);background:linear-gradient(145deg,#725a34,#302315);color:#f4d994}
+.mic-seat b{font-size:12px}
+.mic-seat small{font-size:9px;color:var(--muted)}
+@media(max-width:380px){.mic-seat-grid{gap:7px}.mic-seat{padding:10px 3px}.mic-seat .creator-avatar{width:40px;height:40px}}
