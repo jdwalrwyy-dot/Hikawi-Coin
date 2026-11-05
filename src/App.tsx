@@ -184,7 +184,16 @@ export default function App() {
   if (!authUser) {
     return <>
       <main className="welcome-screen" dir="rtl">
-        <img className="welcome-art" src="/hikawi-welcome.svg" alt="حكاوي كوين" />
+        <div className="welcome-art-placeholder" role="img" aria-label="مساحة الصورة الرئيسية لحكاوي كوين">
+          <div className="welcome-arch"><span className="welcome-moon" /><span className="welcome-minaret minaret-one" /><span className="welcome-minaret minaret-two" /><span className="welcome-palace">⌂</span></div>
+          <span className="welcome-lantern lantern-left">✧</span><span className="welcome-lantern lantern-right">✧</span>
+          <div className="welcome-glow-orb" />
+          <div className="welcome-crown">♛</div>
+          <div className="welcome-title-mark"><h1>حكاوي</h1><strong>كوين</strong><p>مكان يجمعنا ... لحكايات أجمل ♡</p></div>
+          <div className="welcome-microphone" aria-hidden="true">🎙</div>
+          <span className="welcome-heart heart-left">♥</span><span className="welcome-heart heart-right">♥</span>
+          <span className="welcome-spark spark-left">✦</span><span className="welcome-spark spark-right">✧</span>
+        </div>
         <div className="welcome-actions">
           <button className="welcome-primary welcome-google" type="button" onClick={() => void googleLogin()}>
             <span className="welcome-google-mark" aria-hidden="true">G</span>
