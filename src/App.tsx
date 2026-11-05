@@ -116,18 +116,6 @@ function RoomView({ room, onBack }: { room: LiveRoomRecord; onBack: () => void }
   return <section className="screen active"><PageTitle eyebrow="VOICE ROOM" title={room.name} description={room.description || "أهلاً بيك في الغرفة"} /><div className="support-card"><span>♛</span><b>تم تسجيل دخولك للغرفة</b><p>الغرفة جاهزة من ناحية الانضمام وحفظ العضوية. الصوت والمايك المباشر لسه محتاجين ربط خدمة RTC آمنة على الخادم؛ لذلك المقاعد ظاهرة كتجهيزات وليست مايكات عاملة حاليًا.</p><button className="gold-btn" type="button" onClick={onBack}>العودة للغرف</button></div><div className="section-heading"><h2>مقاعد المايك الـ 27</h2></div><div className="creator-grid mic-seat-grid">{Array.from({length: 27}, (_, index) => <div className="creator-card mic-seat" key={index}><div className="creator-avatar ca2">{index === 0 ? "♙" : "＋"}</div><b>مايك {index + 1}</b><small>{index === 0 ? "عضويتك محفوظة" : "مقعد متاح"}</small></div>)}</div></section>;
 }
 
-function WelcomePage({ onLogin, onRegister, authOpen, authMode, onCloseAuth }: { onLogin: () => void; onRegister: () => void; authOpen: boolean; authMode: "login" | "register"; onCloseAuth: () => void }) {
-  return <main className="welcome-screen" dir="rtl">
-    <img className="welcome-art" src="/hikawi-login.jpg" alt="حكاوي كوين - الصورة الملكية" />
-    <section className={authOpen ? "welcome-actions auth-active" : "welcome-actions"}>
-      {authOpen ? <AuthDialog onClose={onCloseAuth} configured={isFirebaseConfigured} mode={authMode} /> : <>
-        <button className="welcome-primary" type="button" onClick={onLogin}><span>♟</span> تسجيل الدخول</button>
-        <button className="welcome-secondary" type="button" onClick={onRegister}><span>⊕</span> إنشاء حساب جديد</button>
-        <p>بمواصلة استخدامك للتطبيق فإنك توافق على <a href="/terms.html">شروط الاستخدام</a> و<a href="/privacy.html">سياسة الخصوصية</a>.</p>
-      </>}
-    </section>
-  </main>;
-}
 
 export default function App() {
   const [screen, setScreen] = useState<ScreenId>("home");
@@ -172,7 +160,6 @@ export default function App() {
   const navigate = (next: ScreenId) => { setScreen(next); setSearchOpen(false); };
   const logout = () => { if (auth) void signOut(auth).catch((error: unknown) => setToast(error instanceof Error ? error.message : "تعذر تسجيل الخروج.")); };
   const submitSearch = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); setToast(search.trim() ? "البحث الحقيقي هيتفعل بعد ربط قاعدة البيانات" : "اكتب كلمة للبحث"); };
-  if (!authUser) return <WelcomePage authOpen={authOpen} authMode={authMode} onCloseAuth={() => setAuthOpen(false)} onLogin={() => { setAuthMode("login"); setAuthOpen(true); }} onRegister={() => { setAuthMode("register"); setAuthOpen(true); }} />;
   return <>
     <div className="ambient ambient-a" aria-hidden="true" /><div className="ambient ambient-b" aria-hidden="true" />
     <div className="app-shell">
