@@ -101,6 +101,49 @@ service cloud.firestore {
       }
     }
 
+    match /moments/{momentId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.authorName is string
+        && request.resource.data.text is string
+        && request.resource.data.text.size() <= 5000
+        && request.resource.data.likesCount == 0
+        && request.resource.data.mediaType in [null, 'image', 'video']
+        && request.resource.data.mediaUrl in [null, ''];
+      allow update: if signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount'])
+        && request.resource.data.likesCount is int
+        && (
+          (request.resource.data.likesCount == resource.data.likesCount + 1
+            && !exists(/databases/$(database)/documents/moments/$(momentId)/likes/$(request.auth.uid))
+            && existsAfter(/databases/$(database)/documents/moments/$(momentId)/likes/$(request.auth.uid)))
+          ||
+          (request.resource.data.likesCount == resource.data.likesCount - 1
+            && exists(/databases/$(database)/documents/moments/$(momentId)/likes/$(request.auth.uid))
+            && !existsAfter(/databases/$(database)/documents/moments/$(momentId)/likes/$(request.auth.uid)))
+        );
+      allow delete: if signedIn() && resource.data.authorUid == request.auth.uid;
+
+      match /likes/{uid} {
+        allow read: if signedIn();
+        allow create: if signedIn() && request.auth.uid == uid
+          && request.resource.data.uid == uid;
+        allow delete: if signedIn() && request.auth.uid == uid;
+        allow update: if false;
+      }
+      match /comments/{commentId} {
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && request.resource.data.authorUid == request.auth.uid
+          && request.resource.data.authorName is string
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 1000;
+        allow update, delete: if signedIn() && resource.data.authorUid == request.auth.uid;
+      }
+    }
+
     // Balances and financial ledgers are server-only.
     match /wallets/{uid} {
       allow read: if isSelf(uid) || isOwner();
