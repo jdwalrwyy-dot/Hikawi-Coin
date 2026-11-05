@@ -18,10 +18,10 @@ export const demoRooms: Room[] = [
 ];
 
 export const navItems: { id: ScreenId; label: string; icon: string }[] = [
-  { id: "home", label: "الغرف الصوتية", icon: "⌂" },
-  { id: "live", label: "البث المباشر", icon: "▣" },
-  { id: "moments", label: "اللحظات", icon: "✧" },
-  { id: "games", label: "الألعاب", icon: "♟" },
-  { id: "messages", label: "الرسائل", icon: "♧" },
-  { id: "profile", label: "الملف الشخصي", icon: "◉" },
+  { id: "home", label: "الرئيسية", icon: "⌂" },
+  { id: "live", label: "مباشر", icon: "▣" },
+  { id: "games", label: "ألعاب", icon: "♟" },
+  { id: "moments", label: "لحظات", icon: "✧" },
+  { id: "messages", label: "رسائل", icon: "♧" },
+  { id: "profile", label: "حسابي", icon: "◉" },
 ];
