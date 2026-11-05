@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { onAuthStateChanged, signOut, type User } from "firebase/auth";
+import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth";
 import { auth, isFirebaseConfigured, saveUserProfile } from "./firebase";
 import AuthDialog from "./auth/AuthDialog";
 import { navItems, type PageAction, type Room, type ScreenId } from "./data";
@@ -123,6 +123,7 @@ export default function App() {
   const [rooms, setRooms] = useState<LiveRoomRecord[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<LiveRoomRecord | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
+  const [authMethod, setAuthMethod] = useState<"all" | "phone">("all");
   const [modal, setModal] = useState<ModalInfo | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -145,6 +146,27 @@ export default function App() {
     catch (error) { setToast(error instanceof Error ? error.message : "تعذر تحميل الغرف"); return undefined; }
   }, [authUser]);
   const onAction: PageAction = (_action, title, message) => setModal({ title: title ?? "حكاوي كوين", message: message ?? "الميزة دي هتتجهز في مرحلة لاحقة." });
+  const openPhoneLogin = () => { setAuthMethod("phone"); setAuthOpen(true); };
+  const openAnyLogin = () => { setAuthMethod("all"); setAuthOpen(true); };
+  const googleLogin = async () => {
+    if (!auth) { setToast("تسجيل الدخول غير جاهز: إعدادات Firebase غير مكتملة."); return; }
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error: unknown) {
+      const code = error && typeof error === "object" && "code" in error && typeof error.code === "string" ? error.code : "";
+      const messages: Record<string, string> = {
+        "auth/unauthorized-domain": "الدومين الحالي مش مضاف في Authorized domains داخل Firebase.",
+        "auth/popup-closed-by-user": "نافذة Google اتقفلت قبل إكمال الدخول.",
+        "auth/popup-blocked": "المتصفح منع نافذة Google. اسمح بالنوافذ المنبثقة وحاول تاني.",
+        "auth/operation-not-allowed": "تسجيل Google مش مفعّل في إعدادات Firebase.",
+        "auth/network-request-failed": "في مشكلة اتصال بالإنترنت.",
+        "auth/too-many-requests": "محاولات كتير. استنى شوية وجرب تاني."
+      };
+      setToast(messages[code] ?? "تعذر تسجيل الدخول باستخدام Google. حاول مرة تانية.");
+    }
+  };
   const enterRoom = async (room: Room | LiveRoomRecord) => {
     if (!authUser) { setAuthOpen(true); setToast("سجّل دخولك الأول علشان تدخل الغرفة"); return; }
     if (!("id" in room)) { setToast("الغرفة دي بيانات قديمة تجريبية؛ اختار غرفة منشأة من قاعدة البيانات."); return; }
@@ -159,6 +181,26 @@ export default function App() {
   const navigate = (next: ScreenId) => { setScreen(next); setSearchOpen(false); };
   const logout = () => { if (auth) void signOut(auth).catch((error: unknown) => setToast(error instanceof Error ? error.message : "تعذر تسجيل الخروج.")); };
   const submitSearch = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); setToast(search.trim() ? "البحث الحقيقي هيتفعل بعد ربط قاعدة البيانات" : "اكتب كلمة للبحث"); };
+  if (!authUser) {
+    return <>
+      <main className="welcome-screen" dir="rtl">
+        <img className="welcome-art" src="/hikawi-welcome.svg" alt="حكاوي كوين" />
+        <div className="welcome-actions">
+          <button className="welcome-primary welcome-google" type="button" onClick={() => void googleLogin()}>
+            <span className="welcome-google-mark" aria-hidden="true">G</span>
+            الدخول بحساب Google
+          </button>
+          <button className="welcome-secondary" type="button" onClick={openPhoneLogin}>
+            <span aria-hidden="true">☎</span>
+            الدخول برقم الهاتف
+          </button>
+          <p>مكان يجمعنا.. لحكايات أجمل ♡</p>
+        </div>
+      </main>
+      {authOpen ? <div className="modal-backdrop welcome-auth-backdrop"><AuthDialog onClose={() => setAuthOpen(false)} configured={isFirebaseConfigured} method={authMethod} /></div> : null}
+      <div className={`toast ${toast ? "show" : ""}`} role="status" aria-live="polite">{toast}</div>
+    </>;
+  }
   return <>
     <div className="ambient ambient-a" aria-hidden="true" /><div className="ambient ambient-b" aria-hidden="true" />
     <div className="app-shell">
@@ -168,7 +210,7 @@ export default function App() {
           <button className="icon-btn" type="button" onClick={() => setSearchOpen((value) => !value)} aria-label="بحث">⌕</button>
           <button className="wallet-pill" type="button" onClick={() => navigate("wallet")}><span>◆</span><b>المحفظة</b><i>＋</i></button>
           <button className="icon-btn notification-btn" type="button" onClick={() => setModal({ title: "إشعاراتك", message: "هنا هتظهر رسائل الأصدقاء ودعوات الغرف وتنبيهات حكاوي كوين." })} aria-label="الإشعارات">♧<i /></button>
-          <button className="login-btn" type="button" onClick={() => setAuthOpen(true)}>{authUser ? (authUser.displayName?.slice(0, 1) || "ح") : "دخول"}</button><button className="mini-avatar" type="button" onClick={() => navigate("profile")} aria-label="حسابي">{authUser?.displayName?.slice(0, 1) || "و"}</button>
+          <button className="login-btn" type="button" onClick={() => authUser ? navigate("profile") : openAnyLogin()}>{authUser ? (authUser.displayName?.slice(0, 1) || "ح") : "دخول"}</button><button className="mini-avatar" type="button" onClick={() => navigate("profile")} aria-label="حسابي">{authUser?.displayName?.slice(0, 1) || "و"}</button>
         </div>
       </header>
       {searchOpen ? <form className="search-bar" onSubmit={submitSearch}><span>⌕</span><input autoFocus value={search} onChange={(event) => setSearch(event.target.value)} placeholder="دور على غرفة أو شخص أو لعبة..." aria-label="البحث العام" /><button type="button" onClick={() => { setSearchOpen(false); setSearch(""); }} aria-label="إغلاق البحث">✕</button></form> : null}
@@ -190,6 +232,6 @@ export default function App() {
     <nav className="bottom-nav" aria-label="التنقل الرئيسي">{navItems.map((item) => <button className={`nav-item ${screen === item.id ? "active" : ""}`} key={item.id} type="button" onClick={() => navigate(item.id)} aria-current={screen === item.id ? "page" : undefined}><span>{item.icon}</span><small>{item.label}</small></button>)}</nav>
     <div className={`toast ${toast ? "show" : ""}`} role="status" aria-live="polite">{toast}</div>
     {modal ? <AppModal info={modal} onClose={() => setModal(null)} /> : null}
-    {authOpen ? <AuthDialog onClose={() => setAuthOpen(false)} configured={isFirebaseConfigured} /> : null}
+    {authOpen ? <div className="modal-backdrop welcome-auth-backdrop"><AuthDialog onClose={() => setAuthOpen(false)} configured={isFirebaseConfigured} method={authMethod} /></div> : null}
   </>;
 }
