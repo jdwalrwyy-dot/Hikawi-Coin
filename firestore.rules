@@ -110,7 +110,7 @@ service cloud.firestore {
         && request.resource.data.text.size() <= 5000
         && request.resource.data.likesCount == 0
         && request.resource.data.mediaType in [null, 'image', 'video']
-        && request.resource.data.mediaUrl in [null, ''];
+        && ((request.resource.data.mediaType == null && request.resource.data.mediaUrl == null)\n          || (request.resource.data.mediaType in ['image', 'video']\n            && request.resource.data.mediaUrl is string\n            && request.resource.data.mediaUrl.size() > 0));
       allow update: if signedIn()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount'])
         && request.resource.data.likesCount is int
