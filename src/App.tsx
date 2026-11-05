@@ -45,14 +45,14 @@ export default function App() {
       <section className="section">
         <div className="section-heading"><div><span className="eyebrow">المجتمع</span><h2>أكثر الغرف نشاطاً 🔥</h2></div><button className="text-button">عرض الكل ←</button></div>
         <div className="top-rooms">
-          {["قمر الليل", "ملك حكاوي", "هواها مصري"].map((n) => <article className="top-room" key={n}><span className="rank">{i + 1}</span><div className="top-avatar">{["🌙","👑","🌸"][i]}</div><b>{n}</b><small>💎 {["5.4K","3.2K","1.8K"][i]}</small></article>)}
+          {["قمر الليل", "ملك حكاوي", "هواها مصري"].map((n, i) => <article className="top-room" key={n}><span className="rank">{i + 1}</span><div className="top-avatar">{["🌙","👑","🌸"][i]}</div><b>{n}</b><small>💎 {["5.4K","3.2K","1.8K"][i]}</small></article>)}
         </div>
       </section>
       <section className="pinned-room"><span className="pin-label">مثبتة</span><div className="pin-crown">👑</div><div className="pin-info"><b>غرفة الإدارة الرسمية</b><small>حكاوي كوين · غرفة موثقة</small></div><strong>12.6K <small>متصل</small></strong></section>
       <section className="section room-section">
         <div className="section-heading"><div><span className="eyebrow">ادخل واتعرف على ناس جديدة</span><h2>الغرف الصوتية العامة</h2></div><span className="live-dot">● مباشر</span></div>
         <label className="search"><span>⌕</span><input value={query} onChange={e => setQuery(e.target.value)} placeholder="ابحث عن غرفة أو مضيف..." /></label>
-        <div className="room-list">{filtered.map((r, i) => <article className="room-card" key={r.name}><div className="room-art">{r.icon}<span>●</span></div><div className="room-info"><b>{r.name}</b><small>{r.mood} · {r.host}</small><small>♟ {r.count} متصل</small></div><button className="join-button" onClick={() => setActive("live")}>دخول</button></article>)}</div>
+        <div className="room-list">{filtered.map((r) => <article className="room-card" key={r.name}><div className="room-art">{r.icon}<span>●</span></div><div className="room-info"><b>{r.name}</b><small>{r.mood} · {r.host}</small><small>♟ {r.count} متصل</small></div><button className="join-button" onClick={() => setActive("live")}>دخول</button></article>)}</div>
         {filtered.length === 0 && <p className="empty">مفيش غرف مطابقة للبحث.</p>}
       </section>
       <section className="section gift-section">
