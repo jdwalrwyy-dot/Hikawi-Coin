@@ -14,27 +14,23 @@ function PageTitle({ eyebrow, title, description }: { eyebrow: string; title: st
 function RoomCard({ room, onJoin }: { room: Room | LiveRoomRecord; onJoin: (room: Room | LiveRoomRecord) => void }) {
   return <article className="room-card">
     <div className={`room-cover ${room.coverClass || "cover-gold"}`}>{room.symbol || "♛"}</div>
-    <div className="room-info"><b>{room.name}</b><small>{room.description}</small><div className="room-meta"><span>◉ {room.members ?? 1}</span><span>♬ {room.category}</span></div></div>
-    <span className="room-live">مباشر</span>
+    <div className="room-info"><b>{room.name}</b><small>{room.description}</small><div className="room-meta"><span>◉ {typeof room.members === "number" ? room.members : "العدد غير متاح"}</span><span>♬ {room.category}</span></div></div>
+    <span className="room-live">غرفة عامة</span>
     <button className="join-btn" type="button" onClick={() => onJoin(room)}>دخول</button>
   </article>;
 }
 
 function HomePage({ navigate, rooms, onJoin }: { navigate: (id: ScreenId) => void; rooms: LiveRoomRecord[]; onJoin: (room: Room | LiveRoomRecord) => void }) {
-  const trends = [
-    { name: "ليالي الملوك", count: "248 بيتونسوا", cls: "trend-one", symbol: "♛" },
-    { name: "قعدة رايقة", count: "126 موجودين", cls: "trend-two", symbol: "☾" },
-    { name: "نجوم الطرب", count: "89 مستمع", cls: "trend-three", symbol: "♫" },
-  ];
+  const trends = rooms.slice(0, 3);
   const moods = [["☕", "سوالف وضحك", "قعدة خفيفة"], ["♫", "مزيكا وطرب", "عيش الإحساس"], ["⚡", "تحدي وحماس", "ورّيهم شطارتك"], ["✧", "ناس جديدة", "وسع دايرتك"]];
   return <section className="screen active" id="home">
     <div className="hero-card"><div className="hero-copy"><span className="eyebrow"><i /> المكان اللي شبهك</span><h1>مش مجرد دخول..<br /><span>دي حكايتك.</span></h1><p>ناس جديدة، ضحكة من القلب، وليالي ملهاش آخر.</p><div className="hero-actions"><button className="gold-btn" type="button" onClick={() => navigate("rooms")}>اكتشف الغرف <span>←</span></button><button className="text-btn" type="button" onClick={() => navigate("live")}>شوف اللايف <span>↗</span></button></div></div><div className="hero-art" aria-hidden="true"><div className="orbit orbit-one" /><div className="orbit orbit-two" /><div className="hero-crown">♛</div><div className="hero-spark spark-one">✦</div><div className="hero-spark spark-two">✧</div><div className="hero-caption"><b>ليلتك.. تبدأ هنا</b><small>صوتك له مكان</small></div></div><div className="hero-glow" /></div>
     <div className="section-heading"><div><span className="eyebrow">LIVE NOW</span><h2>الترند مولّع <span className="hot-dot">●</span></h2></div><button className="see-all" type="button" onClick={() => navigate("rooms")}>كل الغرف ←</button></div>
-    <div className="trending-row">{trends.map((item) => <article className={`trend-card ${item.cls}`} key={item.name} role="button" tabIndex={0} onClick={() => navigate("rooms")} onKeyDown={(event) => { if (event.key === "Enter") navigate("rooms"); }}><span className="live-tag">● مباشر</span><div className="trend-bottom"><b>{item.name}</b><small>◉ {item.count}</small></div><span className="trend-symbol">{item.symbol}</span></article>)}</div>
+    <div className="trending-row">{trends.map((room, index) => <button className={`trend-card ${["trend-one", "trend-two", "trend-three"][index]}`} key={room.id} type="button" onClick={() => onJoin(room)}><span className="live-tag">غرفة عامة</span><div className="trend-bottom"><b>{room.name}</b><small>{room.category}</small></div><span className="trend-symbol">{room.symbol || "♛"}</span></button>)}{trends.length === 0 ? <p className="muted">مفيش غرف رائجة متاحة حاليًا. أول ما الغرف العامة تتسجل هتظهر هنا.</p> : null}</div>
     <div className="section-heading"><div><span className="eyebrow">PICK YOUR VIBE</span><h2>اختار مودك</h2></div></div>
     <div className="mood-grid">{moods.map(([icon, title, subtitle]) => <button className="mood-card" key={title} type="button" onClick={() => navigate("rooms")}><span>{icon}</span><b>{title}</b><small>{subtitle}</small></button>)}</div>
     <div className="section-heading"><div><span className="eyebrow">ROOMS FOR YOU</span><h2>غرف تستاهل تدخلها</h2></div><button className="see-all" type="button" onClick={() => navigate("rooms")}>عرض الكل ←</button></div>
-    <div className="room-list">{rooms.slice(0, 3).map((room) => <RoomCard key={room.id} room={room} onJoin={onJoin} />)}</div>
+    <div className="room-list">{rooms.slice(0, 3).map((room) => <RoomCard key={room.id} room={room} onJoin={onJoin} />)}{rooms.length === 0 ? <p className="muted">لسه مفيش غرف عامة. أنشئ أول غرفة وابدأ اللمة.</p> : null}</div>
   </section>;
 }
 
@@ -95,7 +91,7 @@ function ProfilePage({ navigate, onAction }: { navigate: (id: ScreenId) => void;
 }
 
 function WalletPage({ onAction }: { onAction: PageAction }) {
-  return <section className="screen active" id="wallet"><PageTitle eyebrow="YOUR TREASURE" title="المحفظة الملكية" /><div className="balance-card"><small>رصيدك الحالي</small><strong>12,850</strong><span>كوين ◆</span><div className="balance-actions"><button className="glass-btn" type="button" onClick={() => onAction("transactions", "سجل الحركات", "ده سجل تجريبي، والسجل الحقيقي هيعتمد على قاعدة بيانات آمنة.")}>سجل الحركات</button></div></div><div className="section-heading"><h2>حركاتك الأخيرة</h2></div><div className="transaction"><span>♛</span><div><b>هدية ملكية</b><small>اليوم · ٨:٣٠ م</small></div><strong className="negative">− 250</strong></div><div className="transaction"><span>✦</span><div><b>مكافأة يومية</b><small>أمس · ١٠:٠٠ ص</small></div><strong className="positive">+ 50</strong></div></section>;
+  return <section className="screen active" id="wallet"><PageTitle eyebrow="YOUR TREASURE" title="المحفظة الملكية" description="رصيدك وحركاتك المالية في مكان واحد." /><div className="balance-card"><small>رصيد المحفظة</small><strong>—</strong><span>سيظهر الرصيد بعد ربط خدمة المحفظة الآمنة ◆</span><div className="balance-actions"><button className="glass-btn" type="button" onClick={() => onAction("transactions", "سجل الحركات", "سجل المعاملات غير متصل حاليًا. سيتم عرضه بعد ربط واجهة الخادم الآمنة.")}>سجل الحركات</button></div></div><div className="section-heading"><h2>حركاتك الأخيرة</h2></div><p className="muted">لا توجد معاملات معروضة؛ لن نعرض أرصدة أو حركات تجريبية على أنها حقيقية.</p></section>;
 }
 
 function StorePage({ onAction }: { onAction: PageAction }) {
@@ -125,7 +121,7 @@ function AppModal({ info, onClose }: { info: ModalInfo; onClose: () => void }) {
 }
 
 function RoomView({ room, onBack }: { room: LiveRoomRecord; onBack: () => void }) {
-  return <section className="screen active"><PageTitle eyebrow="VOICE ROOM" title={room.name} description={room.description || "أهلاً بيك في الغرفة"} /><div className="support-card"><span>♛</span><b>أنت داخل الغرفة</b><p>تم تسجيل انضمامك للغرفة. تشغيل المايك والصوت المباشر يحتاج تفعيل مزود الصوت ومفاتيح الخدمة على الخادم.</p><button className="gold-btn" type="button" onClick={onBack}>العودة للغرف</button></div><div className="section-heading"><h2>مقاعد الكوين</h2></div><div className="creator-grid">{Array.from({length: 8}, (_, index) => <div className="creator-card" key={index}><div className="creator-avatar ca2">♙</div><b>كوين {index + 1}</b><small>{index === 0 ? "مقعدك" : "متاح"}</small></div>)}</div></section>;
+  return <section className="screen active"><PageTitle eyebrow="VOICE ROOM" title={room.name} description={room.description || "أهلاً بيك في الغرفة"} /><div className="support-card"><span>♛</span><b>تم تسجيل دخولك للغرفة</b><p>الغرفة جاهزة من ناحية الانضمام وحفظ العضوية. الصوت والمايك المباشر لسه محتاجين ربط خدمة RTC آمنة على الخادم؛ لذلك المقاعد ظاهرة كتجهيزات وليست مايكات عاملة حاليًا.</p><button className="gold-btn" type="button" onClick={onBack}>العودة للغرف</button></div><div className="section-heading"><h2>مقاعد المايك الـ 27</h2></div><div className="creator-grid mic-seat-grid">{Array.from({length: 27}, (_, index) => <div className="creator-card mic-seat" key={index}><div className="creator-avatar ca2">{index === 0 ? "♙" : "＋"}</div><b>مايك {index + 1}</b><small>{index === 0 ? "عضويتك محفوظة" : "مقعد متاح"}</small></div>)}</div></section>;
 }
 
 function WelcomePage({ onLogin, onRegister, authOpen, authMode, onCloseAuth }: { onLogin: () => void; onRegister: () => void; authOpen: boolean; authMode: "login" | "register"; onCloseAuth: () => void }) {
@@ -192,7 +188,7 @@ export default function App() {
         <button className="brand" type="button" onClick={() => navigate("home")} aria-label="الرئيسية"><span className="brand-mark">H</span><span><b>حكاوي <em>كوين</em></b><small>عالمك.. على مزاجك</small></span></button>
         <div className="top-actions">
           <button className="icon-btn" type="button" onClick={() => setSearchOpen((value) => !value)} aria-label="بحث">⌕</button>
-          <button className="wallet-pill" type="button" onClick={() => navigate("wallet")}><span>◆</span><b>12,850</b><small>كوين</small><i>＋</i></button>
+          <button className="wallet-pill" type="button" onClick={() => navigate("wallet")}><span>◆</span><b>المحفظة</b><i>＋</i></button>
           <button className="icon-btn notification-btn" type="button" onClick={() => setModal({ title: "إشعاراتك", message: "هنا هتظهر رسائل الأصدقاء ودعوات الغرف وتنبيهات حكاوي كوين." })} aria-label="الإشعارات">♧<i /></button>
           <button className="login-btn" type="button" onClick={() => setAuthOpen(true)}>{authUser ? (authUser.displayName?.slice(0, 1) || "ح") : "دخول"}</button><button className="mini-avatar" type="button" onClick={() => navigate("profile")} aria-label="حسابي">{authUser?.displayName?.slice(0, 1) || "و"}</button>
         </div>
