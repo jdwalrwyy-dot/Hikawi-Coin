@@ -31,11 +31,26 @@ export default function AgoraVoiceRoom({ room, user }: Props) {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
       body: JSON.stringify({ channel: room.id, uid: numericUid(user.uid) }),
     });
-    const result = await response.json() as { appId?: string; token?: string; uid?: number; error?: string };
-    if (!response.ok || !result.appId || !result.token || !result.uid) {
-      throw new Error(result.error || "تعذر الحصول على تصريح الاتصال.");
+    const responseText = await response.text();
+    let result: { appId?: string; token?: string; uid?: number; error?: string } = {};
+    try {
+      result = responseText ? JSON.parse(responseText) as typeof result : {};
+    } catch {
+      const serverMessage = responseText.replace(/<[^>]*>/g, " ").replace(/\\s+/g, " ").trim().slice(0, 180);
+      if (response.status >= 500) {
+        throw new Error("خدمة الصوت على الخادم فيها خطأ مؤقت. راجع إعدادات Agora في Vercel ثم أعد المحاولة.");
+      }
+      throw new Error(serverMessage || "استجابة خادم الصوت غير مفهومة.");
     }
-    return { appId: result.appId!, token: result.token!, uid: result.uid! };
+    if (!response.ok || !result.appId || !result.token || !result.uid) {
+      const statusMessage = response.status === 401
+        ? "انتهت جلسة الدخول. سجّل خروج وادخل تاني."
+        : response.status === 503
+          ? "خدمة الصوت غير مكتملة الإعداد. راجع مفاتيح Agora في Vercel."
+          : result.error || "تعذر الحصول على تصريح الاتصال.";
+      throw new Error(statusMessage);
+    }
+    return { appId: result.appId, token: result.token, uid: result.uid };
   }
 
   useEffect(() => () => {
