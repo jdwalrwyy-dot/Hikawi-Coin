@@ -23,7 +23,7 @@ export default function AgoraVoiceRoom({ room, user }: Props) {
   const [error, setError] = useState("");
   const [remoteUsers, setRemoteUsers] = useState<IAgoraRTCRemoteUser[]>([]);
 
-  async function getToken() {
+  async function getToken(): Promise<{ appId: string; token: string; uid: number }> {
     const idToken = await user.getIdToken();
     const response = await fetch("/api/agora-token", {
       method: "POST",
@@ -34,7 +34,7 @@ export default function AgoraVoiceRoom({ room, user }: Props) {
     if (!response.ok || !result.appId || !result.token || !result.uid) {
       throw new Error(result.error || "تعذر الحصول على تصريح الاتصال.");
     }
-    return result;
+    return { appId: result.appId!, token: result.token!, uid: result.uid! };
   }
 
   useEffect(() => () => {
