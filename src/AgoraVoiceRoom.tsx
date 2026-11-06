@@ -148,7 +148,6 @@ export default function AgoraVoiceRoom({ room, user }: Props) {
             const isLocal = seat?.uid === user.uid;
             const remote = seat && !isLocal ? seat : null;
             const occupied = Boolean(seat);
-            const chosen = isLocal && !connected;
             return <button
               className={occupied ? "mic-seat occupied" : "mic-seat"}
               key={index}
