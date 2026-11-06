@@ -1,4 +1,4 @@
-import { RtcTokenBuilder, RtcRole } from "agora-token";
+import { RtcTokenBuilder } from "agora-token";
 
 type ApiRequest = {
   method?: string;
@@ -54,7 +54,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
     const tokenLifetimeSeconds = 60 * 60;
     const token = RtcTokenBuilder.buildTokenWithUid(
-      appId, certificate, channel, uid, RtcRole.PUBLISHER,
+      appId, certificate, channel, uid, 1,
       tokenLifetimeSeconds, tokenLifetimeSeconds,
     );
     return res.status(200).json({
