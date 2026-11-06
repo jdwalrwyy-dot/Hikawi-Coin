@@ -1,7 +1,7 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { getAuth, type User } from "firebase/auth";
 import {
-  addDoc, collection, doc, getDoc, getFirestore, limit, onSnapshot,
+  addDoc, collection, deleteDoc, doc, getDoc, getFirestore, limit, onSnapshot,
   orderBy, query, runTransaction, serverTimestamp, setDoc, where,
   type Unsubscribe,
 } from "firebase/firestore";
@@ -71,11 +71,10 @@ export async function createLiveRoom(input: {
   const name = input.name.trim();
   if (name.length < 3 || name.length > 40) throw new Error("اسم الغرفة لازم يكون من 3 إلى 40 حرف.");
   const roomRef = doc(collection(db, "rooms"));
-  // Create the room as a single write. Keeping membership as a separate operation
-  // avoids an atomic parent/subcollection write being rejected by stricter rules.
+  const description = input.description.trim().slice(0, 160);
   await setDoc(roomRef, {
     name,
-    description: input.description.trim().slice(0, 160),
+    description,
     category: input.category,
     ownerUid: input.user.uid,
     ownerName: input.user.displayName || "عضو حكاوي",
@@ -83,8 +82,16 @@ export async function createLiveRoom(input: {
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
+  // The owner must be registered as a room member before the room screen opens.
+  // If membership creation fails, remove the just-created room to avoid an orphan.
+  try {
+    await joinLiveRoom(roomRef.id, input.user);
+  } catch (error) {
+    await deleteDoc(roomRef).catch(() => undefined);
+    throw error;
+  }
   return {
-    id: roomRef.id, name, description: input.description, category: input.category,
+    id: roomRef.id, name, description, category: input.category,
     ownerUid: input.user.uid, ownerName: input.user.displayName || "عضو حكاوي",
     visibility: "public",
   };
