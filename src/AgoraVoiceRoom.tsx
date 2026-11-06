@@ -116,27 +116,28 @@ export default function AgoraVoiceRoom({ room, user }: Props) {
         <div className="section-title"><div><span className="kicker">مجلس حكاوي</span><h2>مقاعد المايك</h2></div><span className="subtle">27 مقعد</span></div>
         <div className="mic-grid">
           {Array.from({ length: 27 }, (_, index) => {
-            const isLocal = index === selectedSeat && connected;
+            const isLocal = index === selectedSeat;
             const remoteIndex = selectedSeat !== null && index > selectedSeat ? index - 1 : index;
             const remote = connected && !isLocal && remoteIndex >= 0 ? remoteUsers[remoteIndex] : undefined;
-            const occupied = isLocal || Boolean(remote);
+            const occupied = (isLocal && connected) || Boolean(remote);
+            const chosen = isLocal && !connected;
             return <button
-              className={occupied ? "mic-seat occupied" : "mic-seat"}
+              className={occupied || chosen ? "mic-seat occupied" : "mic-seat"}
               key={index}
               type="button"
               disabled={busy || occupied || connected}
-              aria-label={isLocal ? "مقعد المايك الخاص بك" : remote ? "مقعد مشغول" : `اختيار مقعد المايك رقم ${index + 1}`}
-              onClick={() => void join(index)}
+              aria-label={isLocal ? "مقعد المايك المختار لك" : remote ? "مقعد مشغول" : `اختيار مقعد المايك رقم ${index + 1}`}
+              onClick={() => { setSelectedSeat(index); setError(""); }}
             >
-              <span>{isLocal ? (muted ? "🔇" : "🎙️") : remote ? "🎙️" : "＋"}</span>
-              <small>{isLocal ? (muted ? "أنت · صامت" : "أنت") : remote ? `عضو ${String(remote.uid).slice(-4)}` : "متاح"}</small>
+              <span>{isLocal ? (connected ? (muted ? "🔇" : "🎙️") : "✓") : remote ? "🎙️" : "＋"}</span>
+              <small>{isLocal ? (connected ? (muted ? "أنت · صامت" : "أنت") : "مختار لك") : remote ? `عضو ${String(remote.uid).slice(-4)}` : "متاح"}</small>
             </button>;
           })}
         </div>
       </section>
       <div className="room-controls">
         {!connected
-          ? <button className="primary-button" type="button" onClick={() => void join()} disabled={busy}>{busy ? "جاري الاتصال..." : "🎙️ تشغيل المايك والانضمام للصوت"}</button>
+          ? <button className="primary-button" type="button" onClick={() => void join(selectedSeat ?? 0)} disabled={busy || selectedSeat === null}>{busy ? "جاري الاتصال..." : selectedSeat === null ? "🎙️ اختر مقعدًا أولًا" : "🎙️ تشغيل المايك والانضمام للصوت"}</button>
           : <>
               <button className="primary-button" type="button" onClick={() => void toggleMute()} disabled={busy}>{muted ? "🔊 إلغاء كتم المايك" : "🔇 كتم المايك"}</button>
               <button className="ghost-button" type="button" onClick={() => void leave()} disabled={busy}>مغادرة الصوت</button>
