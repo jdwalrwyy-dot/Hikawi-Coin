@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
-import AgoraVoiceRoom from "./AgoraVoiceRoom";
+import { lazy, Suspense, useEffect, useRef, useState, type FormEvent } from "react";
+const AgoraVoiceRoom = lazy(() => import("./AgoraVoiceRoom"));
 import {
   GoogleAuthProvider, RecaptchaVerifier, onAuthStateChanged,
   signInWithPhoneNumber, signInWithPopup, signOut,
@@ -280,7 +280,9 @@ export default function App() {
       <main className="room-screen" dir="rtl" lang="ar">
         <header className="subpage-header"><button className="round-button" onClick={() => setSelectedRoom(null)}>←</button><div><b>{selectedRoom.name}</b><small>{selectedRoom.category} · غرفة صوتية</small></div><span className="live-chip">غرفة عامة</span></header>
         <section className="room-stage"><span className="kicker">أهلاً بيك في</span><h1>{selectedRoom.name}</h1><p>{selectedRoom.description || "لمة حلوة وأصحاب جداد."}</p><div className="room-owner"><Avatar user={user} /><span><b>{selectedRoom.ownerName}</b><small>صاحب الغرفة</small></span></div></section>
-        <AgoraVoiceRoom room={selectedRoom} user={user} />
+        <Suspense fallback={<div className="loading-screen"><span className="loader" /><small>بنجهز الاتصال الصوتي...</small></div>}>
+          <AgoraVoiceRoom room={selectedRoom} user={user} />
+        </Suspense>
         <div className="room-controls"><button className="ghost-button" onClick={() => setSelectedRoom(null)}>مغادرة الغرفة</button></div>
         {notice && <div className={`toast toast-${notice.kind}`} role="status">{notice.text}<button onClick={() => setNotice(null)}>×</button></div>}
       </main>
