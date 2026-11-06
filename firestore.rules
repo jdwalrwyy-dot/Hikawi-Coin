@@ -93,21 +93,36 @@ service cloud.firestore {
       allow delete: if isOwner() || (signedIn() && resource.data.ownerUid == request.auth.uid);
 
       match /micSeats/{seatId} {
-        allow read: if signedIn()
-          && get(/databases/$(database)/documents/rooms/$(roomId)).data.visibility == 'public';
-        allow create: if signedIn()
+        function canAccessRoom() {
+          return signedIn() && (
+            get(/databases/$(database)/documents/rooms/$(roomId)).data.visibility == 'public'
+            || get(/databases/$(database)/documents/rooms/$(roomId)).data.ownerUid == request.auth.uid
+            || isRoomMember(request.auth.uid)
+          );
+        }
+        function canUseMic() {
+          return signedIn() && (
+            get(/databases/$(database)/documents/rooms/$(roomId)).data.ownerUid == request.auth.uid
+            || isRoomMember(request.auth.uid)
+          );
+        }
+        allow read: if canAccessRoom();
+        allow create: if canUseMic()
           && request.resource.data.uid == request.auth.uid
           && request.resource.data.seatIndex is int
           && request.resource.data.seatIndex >= 0
           && request.resource.data.seatIndex < 27
           && seatId == string(request.resource.data.seatIndex)
           && request.resource.data.displayName is string;
-        allow update: if signedIn()
+        allow update: if canUseMic()
           && resource.data.uid == request.auth.uid
           && request.resource.data.uid == request.auth.uid
           && request.resource.data.seatIndex == resource.data.seatIndex
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','photoURL','updatedAt']);
-        allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+        allow delete: if signedIn() && (
+          resource.data.uid == request.auth.uid
+          || get(/databases/$(database)/documents/rooms/$(roomId)).data.ownerUid == request.auth.uid
+        );
       }
 
       match /members/{uid} {
