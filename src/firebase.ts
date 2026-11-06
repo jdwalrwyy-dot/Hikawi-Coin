@@ -84,7 +84,7 @@ export async function createLiveRoom(input: {
     updatedAt: serverTimestamp(),
   });
   return {
-    id: roomRef.id, name, description: input.description, category: input.category,
+    id: roomRef.id, name, description: input.description.trim().slice(0, 160), category: input.category,
     ownerUid: input.user.uid, ownerName: input.user.displayName || "عضو حكاوي",
     visibility: "public",
   };
@@ -138,19 +138,20 @@ export async function reserveMicSeat(
   }
   const seats = collection(db, "rooms", roomId, "micSeats");
   const nextRef = doc(seats, String(seatIndex));
-  const previousRef = previousSeat === null ? null : doc(seats, String(previousSeat));
+  // Read every seat currently owned by this user inside the same transaction.
+  // This prevents stale client state or rapid taps from leaving one user on
+  // multiple microphones at once.
   await runTransaction(db, async (transaction) => {
-    const nextSnapshot = await transaction.get(nextRef);
-    const previousSnapshot = previousRef && previousRef.path !== nextRef.path
-      ? await transaction.get(previousRef)
-      : null;
+    const [nextSnapshot, ownSeatsSnapshot] = await Promise.all([
+      transaction.get(nextRef),
+      transaction.get(query(seats, where("uid", "==", user.uid))),
+    ]);
     if (nextSnapshot.exists() && nextSnapshot.data().uid !== user.uid) {
       throw new Error("المقعد ده أخده عضو تاني. اختار مقعدًا مختلفًا.");
     }
-    if (previousRef && previousRef.path !== nextRef.path
-      && previousSnapshot?.exists() && previousSnapshot.data().uid === user.uid) {
-      transaction.delete(previousRef);
-    }
+    ownSeatsSnapshot.docs.forEach((seatDocument) => {
+      if (seatDocument.ref.path !== nextRef.path) transaction.delete(seatDocument.ref);
+    });
     transaction.set(nextRef, {
       seatIndex,
       uid: user.uid,
