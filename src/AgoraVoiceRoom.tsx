@@ -5,15 +5,6 @@ import { releaseMicSeat, reserveMicSeat, subscribeMicSeats, type LiveRoomRecord,
 
 type Props = { room: LiveRoomRecord; user: User };
 
-function numericUid(value: string): number {
-  let hash = 2166136261;
-  for (let i = 0; i < value.length; i += 1) {
-    hash ^= value.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return (hash >>> 0) || 1;
-}
-
 export default function AgoraVoiceRoom({ room, user }: Props) {
   const clientRef = useRef<IAgoraRTCClient | null>(null);
   const trackRef = useRef<ILocalAudioTrack | null>(null);
