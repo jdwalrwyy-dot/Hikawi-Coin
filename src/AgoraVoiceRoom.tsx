@@ -31,7 +31,7 @@ export default function AgoraVoiceRoom({ room, user }: Props) {
     const response = await fetch("/api/agora-token", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-      body: JSON.stringify({ channel: room.id, uid: numericUid(user.uid) }),
+      body: JSON.stringify({ channel: room.id }),
     });
     const responseText = await response.text();
     let result: { appId?: string; token?: string; uid?: number; error?: string } = {};
