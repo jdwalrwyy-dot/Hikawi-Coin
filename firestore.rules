@@ -102,7 +102,8 @@ service cloud.firestore {
         }
         function canUseMic() {
           return signedIn() && (
-            get(/databases/$(database)/documents/rooms/$(roomId)).data.ownerUid == request.auth.uid
+            get(/databases/$(database)/documents/rooms/$(roomId)).data.visibility == 'public'
+            || get(/databases/$(database)/documents/rooms/$(roomId)).data.ownerUid == request.auth.uid
             || isRoomMember(request.auth.uid)
           );
         }
