@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import AgoraRTC, { type IAgoraRTCClient, type ILocalAudioTrack, type IAgoraRTCRemoteUser } from "agora-rtc-sdk-ng";
 import type { User } from "firebase/auth";
-import type { LiveRoomRecord } from "./firebase";
+import { releaseMicSeat, reserveMicSeat, subscribeMicSeats, type LiveRoomRecord, type MicSeatRecord } from "./firebase";
 
 type Props = { room: LiveRoomRecord; user: User };
 
@@ -22,7 +22,7 @@ export default function AgoraVoiceRoom({ room, user }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [remoteUsers, setRemoteUsers] = useState<IAgoraRTCRemoteUser[]>([]);
-  const [selectedSeat, setSelectedSeat] = useState<number | null>(null);
+  const [selectedSeat, setSelectedSeat] = useState<number | null>(null);\n  const [micSeats, setMicSeats] = useState<MicSeatRecord[]>([]);\n  const selectedSeatRef = useRef<number | null>(null);
 
   async function getToken(): Promise<{ appId: string; token: string; uid: number }> {
     const idToken = await user.getIdToken();
@@ -53,13 +53,25 @@ export default function AgoraVoiceRoom({ room, user }: Props) {
     return { appId: result.appId, token: result.token, uid: result.uid };
   }
 
+  useEffect(() => {
+    return subscribeMicSeats(room.id, (seats) => {
+      setMicSeats(seats);
+      const ownSeat = seats.find((seat) => seat.uid === user.uid);
+      const nextSeat = ownSeat ? ownSeat.seatIndex : null;
+      selectedSeatRef.current = nextSeat;
+      setSelectedSeat(nextSeat);
+    }, (cause) => setError(cause.message || "تعذر تحديث مقاعد المايك."));
+  }, [room.id, user.uid]);
+
   useEffect(() => () => {
     const client = clientRef.current;
     const track = trackRef.current;
     track?.stop();
     track?.close();
     if (client) void client.leave().catch(() => undefined);
-  }, []);
+    const seat = selectedSeatRef.current;
+    if (seat !== null) void releaseMicSeat(room.id, seat, user.uid).catch(() => undefined);
+  }, [room.id, user.uid]);
 
   async function join(seatIndex = 0) {
     if (busy || connected) return;
@@ -118,6 +130,9 @@ export default function AgoraVoiceRoom({ room, user }: Props) {
       clientRef.current = null;
       setRemoteUsers([]);
       setConnected(false);
+      const seat = selectedSeatRef.current;
+      if (seat !== null) await releaseMicSeat(room.id, seat, user.uid);
+      selectedSeatRef.current = null;
       setSelectedSeat(null);
       setMuted(false);
     } catch {
@@ -131,21 +146,31 @@ export default function AgoraVoiceRoom({ room, user }: Props) {
         <div className="section-title"><div><span className="kicker">مجلس حكاوي</span><h2>مقاعد المايك</h2></div><span className="subtle">27 مقعد</span></div>
         <div className="mic-grid">
           {Array.from({ length: 27 }, (_, index) => {
-            const isLocal = index === selectedSeat;
-            const remoteIndex = selectedSeat !== null && index > selectedSeat ? index - 1 : index;
-            const remote = connected && !isLocal && remoteIndex >= 0 ? remoteUsers[remoteIndex] : undefined;
-            const occupied = (isLocal && connected) || Boolean(remote);
+            const seat = micSeats.find((item) => item.seatIndex === index);
+            const isLocal = seat?.uid === user.uid;
+            const remote = seat && !isLocal ? seat : null;
+            const occupied = Boolean(seat);
             const chosen = isLocal && !connected;
             return <button
-              className={occupied || chosen ? "mic-seat occupied" : "mic-seat"}
+              className={occupied ? "mic-seat occupied" : "mic-seat"}
               key={index}
               type="button"
-              disabled={busy || occupied || connected}
-              aria-label={isLocal ? "مقعد المايك المختار لك" : remote ? "مقعد مشغول" : `اختيار مقعد المايك رقم ${index + 1}`}
-              onClick={() => { setSelectedSeat(index); setError(""); }}
+              disabled={busy || (occupied && !isLocal) || connected}
+              aria-label={isLocal ? "مقعد المايك الخاص بك" : remote ? "مقعد مشغول" : `اختيار مقعد المايك رقم ${index + 1}`}
+              onClick={() => {
+                setBusy(true);
+                setError("");
+                void reserveMicSeat(room.id, index, user, selectedSeatRef.current)
+                  .then(() => {
+                    selectedSeatRef.current = index;
+                    setSelectedSeat(index);
+                  })
+                  .catch((cause) => setError(cause instanceof Error ? cause.message : "تعذر حجز المقعد."))
+                  .finally(() => setBusy(false));
+              }}
             >
               <span>{isLocal ? (connected ? (muted ? "🔇" : "🎙️") : "✓") : remote ? "🎙️" : "＋"}</span>
-              <small>{isLocal ? (connected ? (muted ? "أنت · صامت" : "أنت") : "مختار لك") : remote ? `عضو ${String(remote.uid).slice(-4)}` : "متاح"}</small>
+              <small>{isLocal ? (connected ? (muted ? "أنت · صامت" : "أنت") : "مختار لك") : remote ? remote.displayName : "متاح"}</small>
             </button>;
           })}
         </div>
