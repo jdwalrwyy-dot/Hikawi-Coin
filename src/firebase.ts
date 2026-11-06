@@ -109,6 +109,66 @@ export async function joinLiveRoom(roomId: string, user: User): Promise<void> {
   }
 }
 
+export interface MicSeatRecord {
+  id: string;
+  seatIndex: number;
+  uid: string;
+  displayName: string;
+  photoURL?: string | null;
+}
+export function subscribeMicSeats(
+  roomId: string,
+  onSeats: (seats: MicSeatRecord[]) => void,
+  onError: (error: Error) => void,
+): Unsubscribe {
+  if (!db) throw new Error("قاعدة البيانات غير متاحة.");
+  return onSnapshot(collection(db, "rooms", roomId, "micSeats"), (snapshot) => {
+    onSeats(snapshot.docs.map((item) => ({ id: item.id, ...item.data() } as MicSeatRecord)));
+  }, onError);
+}
+export async function reserveMicSeat(
+  roomId: string,
+  seatIndex: number,
+  user: User,
+  previousSeat: number | null,
+): Promise<void> {
+  if (!db) throw new Error("قاعدة البيانات غير متاحة.");
+  if (!Number.isInteger(seatIndex) || seatIndex < 0 || seatIndex >= 27) {
+    throw new Error("رقم مقعد المايك غير صحيح.");
+  }
+  const seats = collection(db, "rooms", roomId, "micSeats");
+  const nextRef = doc(seats, String(seatIndex));
+  const previousRef = previousSeat === null ? null : doc(seats, String(previousSeat));
+  await runTransaction(db, async (transaction) => {
+    const nextSnapshot = await transaction.get(nextRef);
+    const previousSnapshot = previousRef && previousRef.path !== nextRef.path
+      ? await transaction.get(previousRef)
+      : null;
+    if (nextSnapshot.exists() && nextSnapshot.data().uid !== user.uid) {
+      throw new Error("المقعد ده أخده عضو تاني. اختار مقعدًا مختلفًا.");
+    }
+    if (previousRef && previousRef.path !== nextRef.path
+      && previousSnapshot?.exists() && previousSnapshot.data().uid === user.uid) {
+      transaction.delete(previousRef);
+    }
+    transaction.set(nextRef, {
+      seatIndex,
+      uid: user.uid,
+      displayName: user.displayName || "عضو حكاوي",
+      photoURL: user.photoURL || null,
+      updatedAt: serverTimestamp(),
+    });
+  });
+}
+export async function releaseMicSeat(roomId: string, seatIndex: number, uid: string): Promise<void> {
+  if (!db) return;
+  const seatRef = doc(db, "rooms", roomId, "micSeats", String(seatIndex));
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(seatRef);
+    if (snapshot.exists() && snapshot.data().uid === uid) transaction.delete(seatRef);
+  });
+}
+
 export interface MomentRecord {
   id: string;
   authorUid: string;
