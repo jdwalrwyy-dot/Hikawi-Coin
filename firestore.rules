@@ -68,7 +68,17 @@ service cloud.firestore {
     }
 
     match /rooms/{roomId} {
-      allow read: if signedIn() && (resource.data.visibility == 'public' || resource.data.ownerUid == request.auth.uid);
+      function isRoomMember(uid) {
+        return exists(/databases/$(database)/documents/rooms/$(roomId)/members/$(uid));
+      }
+
+      // Public rooms are readable by signed-in users. Private rooms are
+      // readable only by their owner or an existing member.
+      allow read: if signedIn() && (
+        resource.data.visibility == 'public'
+        || resource.data.ownerUid == request.auth.uid
+        || isRoomMember(request.auth.uid)
+      );
       allow create: if signedIn()
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.visibility in ['public', 'private']
@@ -101,8 +111,11 @@ service cloud.firestore {
       }
 
       match /members/{uid} {
-        allow read: if signedIn()
-          && get(/databases/$(database)/documents/rooms/$(roomId)).data.visibility == 'public';
+        allow read: if signedIn() && (
+          get(/databases/$(database)/documents/rooms/$(roomId)).data.visibility == 'public'
+          || request.auth.uid == uid
+          || get(/databases/$(database)/documents/rooms/$(roomId)).data.ownerUid == request.auth.uid
+        );
         allow create: if signedIn()
           && request.auth.uid == uid
           && getAfter(/databases/$(database)/documents/rooms/$(roomId)).data.visibility == 'public'
