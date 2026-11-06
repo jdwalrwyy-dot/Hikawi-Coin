@@ -22,7 +22,9 @@ export default function AgoraVoiceRoom({ room, user }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [remoteUsers, setRemoteUsers] = useState<IAgoraRTCRemoteUser[]>([]);
-  const [selectedSeat, setSelectedSeat] = useState<number | null>(null);\n  const [micSeats, setMicSeats] = useState<MicSeatRecord[]>([]);\n  const selectedSeatRef = useRef<number | null>(null);
+  const [selectedSeat, setSelectedSeat] = useState<number | null>(null);
+  const [micSeats, setMicSeats] = useState<MicSeatRecord[]>([]);
+  const selectedSeatRef = useRef<number | null>(null);
 
   async function getToken(): Promise<{ appId: string; token: string; uid: number }> {
     const idToken = await user.getIdToken();
@@ -108,6 +110,11 @@ export default function AgoraVoiceRoom({ room, user }: Props) {
       if (trackRef.current) { trackRef.current.stop(); trackRef.current.close(); trackRef.current = null; }
       if (client) { await client.leave().catch(() => undefined); clientRef.current = null; }
       setConnected(false);
+      const reservedSeat = selectedSeatRef.current;
+      if (reservedSeat !== null) {
+        await releaseMicSeat(room.id, reservedSeat, user.uid).catch(() => undefined);
+      }
+      selectedSeatRef.current = null;
       setSelectedSeat(null);
     } finally { setBusy(false); }
   }
