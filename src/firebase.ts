@@ -71,10 +71,9 @@ export async function createLiveRoom(input: {
   const name = input.name.trim();
   if (name.length < 3 || name.length > 40) throw new Error("اسم الغرفة لازم يكون من 3 إلى 40 حرف.");
   const roomRef = doc(collection(db, "rooms"));
-  const memberRef = doc(db, "rooms", roomRef.id, "members", input.user.uid);
-  const { writeBatch } = await import("firebase/firestore");
-  const batch = writeBatch(db);
-  batch.set(roomRef, {
+  // Create the room as a single write. Keeping membership as a separate operation
+  // avoids an atomic parent/subcollection write being rejected by stricter rules.
+  await setDoc(roomRef, {
     name,
     description: input.description.trim().slice(0, 160),
     category: input.category,
@@ -84,13 +83,6 @@ export async function createLiveRoom(input: {
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
-  batch.set(memberRef, {
-    uid: input.user.uid,
-    displayName: input.user.displayName || "عضو حكاوي",
-    joinedAt: serverTimestamp(),
-    role: "owner",
-  });
-  await batch.commit();
   return {
     id: roomRef.id, name, description: input.description, category: input.category,
     ownerUid: input.user.uid, ownerName: input.user.displayName || "عضو حكاوي",
