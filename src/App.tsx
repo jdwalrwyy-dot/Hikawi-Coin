@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import AgoraVoiceRoom from "./AgoraVoiceRoom";
 import {
   GoogleAuthProvider, RecaptchaVerifier, onAuthStateChanged,
   signInWithPhoneNumber, signInWithPopup, signOut,
@@ -274,9 +275,8 @@ export default function App() {
       <main className="room-screen" dir="rtl" lang="ar">
         <header className="subpage-header"><button className="round-button" onClick={() => setSelectedRoom(null)}>←</button><div><b>{selectedRoom.name}</b><small>{selectedRoom.category} · غرفة صوتية</small></div><span className="live-chip">غرفة عامة</span></header>
         <section className="room-stage"><span className="kicker">أهلاً بيك في</span><h1>{selectedRoom.name}</h1><p>{selectedRoom.description || "لمة حلوة وأصحاب جداد."}</p><div className="room-owner"><Avatar user={user} /><span><b>{selectedRoom.ownerName}</b><small>صاحب الغرفة</small></span></div></section>
-        <section className="mic-panel"><div className="section-title"><div><span className="kicker">مجلس حكاوي</span><h2>مقاعد المايك</h2></div><span className="subtle">27 مقعد</span></div><div className="mic-grid">{Array.from({ length: 27 }, (_, index) => <div className={index === 0 ? "mic-seat occupied" : "mic-seat"} key={index}><span>{index === 0 ? "🎙️" : "＋"}</span><small>{index === 0 ? "أنت" : "متاح"}</small></div>)}</div></section>
-        <div className="room-warning">تم تسجيل دخولك للغرفة في قاعدة البيانات. الصوت المباشر ومقاعد المايك تحتاج ربط مزود RTC آمن قبل تشغيلها.</div>
-        <div className="room-controls"><button disabled className="primary-button">🎙️ المايك غير متاح حاليًا</button><button className="ghost-button" onClick={() => setSelectedRoom(null)}>مغادرة الغرفة</button></div>
+        <AgoraVoiceRoom room={selectedRoom} user={user} />
+        <div className="room-controls"><button className="ghost-button" onClick={() => setSelectedRoom(null)}>مغادرة الغرفة</button></div>
         {notice && <div className={`toast toast-${notice.kind}`} role="status">{notice.text}<button onClick={() => setNotice(null)}>×</button></div>}
       </main>
     );
