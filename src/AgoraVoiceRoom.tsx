@@ -22,6 +22,7 @@ export default function AgoraVoiceRoom({ room, user }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [remoteUsers, setRemoteUsers] = useState<IAgoraRTCRemoteUser[]>([]);
+  const [selectedSeat, setSelectedSeat] = useState<number | null>(null);
 
   async function getToken(): Promise<{ appId: string; token: string; uid: number }> {
     const idToken = await user.getIdToken();
@@ -45,7 +46,7 @@ export default function AgoraVoiceRoom({ room, user }: Props) {
     if (client) void client.leave().catch(() => undefined);
   }, []);
 
-  async function join() {
+  async function join(seatIndex = 0) {
     if (busy || connected) return;
     setBusy(true);
     setError("");
@@ -69,6 +70,7 @@ export default function AgoraVoiceRoom({ room, user }: Props) {
       const track = await AgoraRTC.createMicrophoneAudioTrack();
       trackRef.current = track;
       await client.publish([track]);
+      setSelectedSeat(seatIndex);
       setConnected(true);
       setRemoteUsers([...client.remoteUsers]);
     } catch (cause) {
@@ -79,6 +81,7 @@ export default function AgoraVoiceRoom({ room, user }: Props) {
       if (trackRef.current) { trackRef.current.stop(); trackRef.current.close(); trackRef.current = null; }
       if (client) { await client.leave().catch(() => undefined); clientRef.current = null; }
       setConnected(false);
+      setSelectedSeat(null);
     } finally { setBusy(false); }
   }
 
@@ -100,6 +103,7 @@ export default function AgoraVoiceRoom({ room, user }: Props) {
       clientRef.current = null;
       setRemoteUsers([]);
       setConnected(false);
+      setSelectedSeat(null);
       setMuted(false);
     } catch {
       setError("حصلت مشكلة أثناء مغادرة القناة. جرّب تاني.");
@@ -112,13 +116,21 @@ export default function AgoraVoiceRoom({ room, user }: Props) {
         <div className="section-title"><div><span className="kicker">مجلس حكاوي</span><h2>مقاعد المايك</h2></div><span className="subtle">27 مقعد</span></div>
         <div className="mic-grid">
           {Array.from({ length: 27 }, (_, index) => {
-            const isLocal = index === 0 && connected;
-            const remote = remoteUsers[index - 1];
+            const isLocal = index === selectedSeat && connected;
+            const remoteIndex = selectedSeat !== null && index > selectedSeat ? index - 1 : index;
+            const remote = connected && !isLocal && remoteIndex >= 0 ? remoteUsers[remoteIndex] : undefined;
             const occupied = isLocal || Boolean(remote);
-            return <div className={occupied ? "mic-seat occupied" : "mic-seat"} key={index}>
+            return <button
+              className={occupied ? "mic-seat occupied" : "mic-seat"}
+              key={index}
+              type="button"
+              disabled={busy || occupied || connected}
+              aria-label={isLocal ? "مقعد المايك الخاص بك" : remote ? "مقعد مشغول" : `اختيار مقعد المايك رقم ${index + 1}`}
+              onClick={() => void join(index)}
+            >
               <span>{isLocal ? (muted ? "🔇" : "🎙️") : remote ? "🎙️" : "＋"}</span>
               <small>{isLocal ? (muted ? "أنت · صامت" : "أنت") : remote ? `عضو ${String(remote.uid).slice(-4)}` : "متاح"}</small>
-            </div>;
+            </button>;
           })}
         </div>
       </section>
