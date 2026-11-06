@@ -138,20 +138,20 @@ export async function reserveMicSeat(
   }
   const seats = collection(db, "rooms", roomId, "micSeats");
   const nextRef = doc(seats, String(seatIndex));
-  // Read every seat currently owned by this user inside the same transaction.
-  // This prevents stale client state or rapid taps from leaving one user on
-  // multiple microphones at once.
+  // Read both the requested seat and the user's previously selected seat
+  // as document references; Firestore client transactions do not accept queries.
   await runTransaction(db, async (transaction) => {
-    const [nextSnapshot, ownSeatsSnapshot] = await Promise.all([
-      transaction.get(nextRef),
-      transaction.get(query(seats, where("uid", "==", user.uid))),
-    ]);
+    const previousRef = previousSeat !== null && previousSeat !== seatIndex
+      ? doc(seats, String(previousSeat))
+      : null;
+    const nextSnapshot = await transaction.get(nextRef);
+    const previousSnapshot = previousRef ? await transaction.get(previousRef) : null;
     if (nextSnapshot.exists() && nextSnapshot.data().uid !== user.uid) {
       throw new Error("المقعد ده أخده عضو تاني. اختار مقعدًا مختلفًا.");
     }
-    ownSeatsSnapshot.docs.forEach((seatDocument) => {
-      if (seatDocument.ref.path !== nextRef.path) transaction.delete(seatDocument.ref);
-    });
+    if (previousRef && previousSnapshot?.exists() && previousSnapshot.data().uid === user.uid) {
+      transaction.delete(previousRef);
+    }
     transaction.set(nextRef, {
       seatIndex,
       uid: user.uid,
