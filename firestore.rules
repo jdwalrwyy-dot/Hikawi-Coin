@@ -82,6 +82,24 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','description','category','coverClass','symbol','updatedAt']));
       allow delete: if isOwner() || (signedIn() && resource.data.ownerUid == request.auth.uid);
 
+      match /micSeats/{seatId} {
+        allow read: if signedIn()
+          && get(/databases/$(database)/documents/rooms/$(roomId)).data.visibility == 'public';
+        allow create: if signedIn()
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.seatIndex is int
+          && request.resource.data.seatIndex >= 0
+          && request.resource.data.seatIndex < 27
+          && seatId == string(request.resource.data.seatIndex)
+          && request.resource.data.displayName is string;
+        allow update: if signedIn()
+          && resource.data.uid == request.auth.uid
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.seatIndex == resource.data.seatIndex
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','photoURL','updatedAt']);
+        allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+      }
+
       match /members/{uid} {
         allow read: if signedIn()
           && get(/databases/$(database)/documents/rooms/$(roomId)).data.visibility == 'public';
