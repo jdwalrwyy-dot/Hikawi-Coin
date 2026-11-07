@@ -70,6 +70,7 @@ export default function App() {
   const recaptchaRef = useRef<RecaptchaVerifier | null>(null);
   const [rooms, setRooms] = useState<LiveRoomRecord[]>([]);
   const [roomFilter, setRoomFilter] = useState("الكل");
+  const [roomSearch, setRoomSearch] = useState("");
   const [moments, setMoments] = useState<MomentRecord[]>([]);
   const [likedIds, setLikedIds] = useState<string[]>([]);
   const [momentText, setMomentText] = useState("");
@@ -86,7 +87,7 @@ export default function App() {
   const [gameIndex, setGameIndex] = useState(0);
   const [gameScore, setGameScore] = useState(0);
   const [answered, setAnswered] = useState<number | null>(null);
-  const filteredRooms = roomFilter === "الكل" ? rooms : rooms.filter((room) => room.category === roomFilter);
+  const filteredRooms = rooms.filter((room) => (roomFilter === "الكل" || room.category === roomFilter) && `${room.name} ${room.description || ""} ${room.ownerName || ""}`.toLocaleLowerCase("ar").includes(roomSearch.trim().toLocaleLowerCase("ar")));
 
   useEffect(() => {
     if (!auth) { setAuthReady(true); return; }
@@ -291,8 +292,10 @@ export default function App() {
 
       {tab === "home" && <section className="page-content">
         <div className="welcome-strip"><div><span className="kicker">مساء الخير</span><h1>{user.displayName || "صاحب حكاوي"} 👋</h1><p>مستنيين حكايتك النهارده.</p></div><div className="welcome-symbol">✦</div></div>
+        <section className="home-feature-banner"><div><span className="kicker">حكاوي كوين</span><h2>اللمة بتحلى بوجودكم</h2><p>اختار غرفتك وابدأ حكاية جديدة مع أصحابك.</p></div><span className="home-feature-crown">♛</span></section>
         <section className="section-block">
           <div className="section-title"><div><span className="kicker">اتكلم واتعرف</span><h2>الغرف الصوتية</h2></div><button className="outline-small" onClick={() => setCreateRoomOpen(true)}>＋ غرفة جديدة</button></div>
+          <label className="room-search"><span>⌕</span><input value={roomSearch} onChange={(event) => setRoomSearch(event.target.value)} placeholder="ابحث عن غرفة أو صاحبها..." aria-label="ابحث عن غرفة" /><button type="button" onClick={() => setRoomSearch("")} aria-label="مسح البحث" disabled={!roomSearch}>×</button></label>
           <div className="room-categories">{["الكل","دردشة","تعرف على أصحاب","موسيقى","ألعاب"].map((x) => <button key={x} onClick={() => setRoomFilter(x)} className={roomFilter === x ? "category-active" : ""}>{x}</button>)}</div>
           {filteredRooms.length === 0 ? <div className="empty-card"><div className="empty-icon">🎙️</div><h3>{rooms.length === 0 ? "لسه مفيش غرف عامة" : "مفيش غرف في التصنيف ده"}</h3><p>{rooms.length === 0 ? "ابدأ اللمة واعمل أول غرفة صوتية في حكاوي." : "اختار تصنيف تاني أو ارجع لعرض كل الغرف."}</p>{rooms.length === 0 && <button className="primary-button" onClick={() => setCreateRoomOpen(true)}>إنشاء أول غرفة</button>}</div> :
             <div className="rooms-grid">{filteredRooms.map((room, index) => <article className="room-tile" key={room.id}><div className={`room-cover cover-${index % 4}`}><span>{["🎙️","🌙","🎮","☕"][index % 4]}</span><small>غرفة عامة</small></div><div className="room-tile-body"><b>{room.name}</b><p>{room.description || room.category || "غرفة حكاوي"}</p><div><span>👤 {room.ownerName}</span><button onClick={() => void enterRoom(room)}>دخول الغرفة</button></div></div></article>)}</div>}
