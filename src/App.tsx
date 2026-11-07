@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   GoogleAuthProvider, RecaptchaVerifier, onAuthStateChanged,
-  signInWithPhoneNumber, signInWithPopup, signOut,
+  signInWithPhoneNumber, signInWithPopup, signOut, updateProfile as updateAuthProfile,
   type ConfirmationResult, type User,
 } from "firebase/auth";
 import type { LiveRoomRecord, MomentComment, MomentRecord } from "./firebase";
 import {
   auth, db, isFirebaseConfigured, saveUserProfile, subscribePublicRooms,
   createLiveRoom, joinLiveRoom, subscribeMoments, createMoment, toggleMomentLike,
-  hasLikedMoment, subscribeMomentComments, addMomentComment,
+  hasLikedMoment, subscribeMomentComments, addMomentComment, updateMyProfile,
 } from "./firebase";
 
 type Tab = "home" | "live" | "moments" | "games" | "messages" | "profile";
@@ -71,6 +71,10 @@ export default function App() {
   const [rooms, setRooms] = useState<LiveRoomRecord[]>([]);
   const [roomFilter, setRoomFilter] = useState("الكل");
   const [roomSearch, setRoomSearch] = useState("");
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [profileName, setProfileName] = useState("");
+  const [profileBio, setProfileBio] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
   const [moments, setMoments] = useState<MomentRecord[]>([]);
   const [likedIds, setLikedIds] = useState<string[]>([]);
   const [momentText, setMomentText] = useState("");
@@ -209,6 +213,23 @@ export default function App() {
     } catch (error) { setNotice({ kind: "error", text: friendlyError(error) }); }
   }
 
+  async function submitProfile(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!user || !auth?.currentUser) return;
+    setProfileSaving(true);
+    try {
+      await updateMyProfile(user.uid, { displayName: profileName, bio: profileBio });
+      await updateAuthProfile(auth.currentUser, { displayName: profileName.trim() });
+      setUser({ ...auth.currentUser });
+      setEditProfileOpen(false);
+      setNotice({ kind: "success", text: "تم تحديث ملفك الشخصي." });
+    } catch (error) {
+      setNotice({ kind: "error", text: friendlyError(error) });
+    } finally {
+      setProfileSaving(false);
+    }
+  }
+
   async function submitRoom(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!user) return;
@@ -338,13 +359,15 @@ export default function App() {
       </section>}
 
       {tab === "profile" && <section className="page-content">
-        <div className="profile-hero"><Avatar user={user} size="large" /><h1>{user.displayName || "عضو حكاوي"}</h1><p>{user.email || user.phoneNumber || "حساب حكاوي"}</p><span className="member-badge">عضو في حكاوي كوين</span></div>
-        <div className="settings-list"><button onClick={() => setNotice({ kind: "info", text: "إعدادات الملف الشخصي قيد الإضافة." })}>✎ <span>تعديل الملف الشخصي</span> <b>←</b></button><button onClick={() => setNotice({ kind: "info", text: "إعدادات الخصوصية والأمان قيد الإضافة." })}>◈ <span>الخصوصية والأمان</span> <b>←</b></button><button onClick={() => setNotice({ kind: "info", text: "سجل النشاط والمعاملات قيد الإضافة." })}>◷ <span>سجل النشاط</span> <b>←</b></button><button onClick={() => void logout()} className="logout-row">↪ <span>تسجيل الخروج</span> <b>←</b></button></div>
+        <div className="profile-hero"><Avatar user={user} size="large" /><h1>{user.displayName || "عضو حكاوي"}</h1><p>{user.email || user.phoneNumber || "حساب حكاوي"}</p><p className="profile-bio">{(user as User & { bio?: string }).bio || "اكتب نبذة بسيطة تعرف بيها أصحابك عليك."}</p><button className="outline-small profile-edit-button" onClick={() => { setProfileName(user.displayName || ""); setProfileBio((user as User & { bio?: string }).bio || ""); setEditProfileOpen(true); }}>تعديل الملف الشخصي</button><span className="member-badge">عضو في حكاوي كوين</span></div>
+        <div className="settings-list"><button onClick={() => { setProfileName(user.displayName || ""); setProfileBio((user as User & { bio?: string }).bio || ""); setEditProfileOpen(true); }}>✎ <span>تعديل الملف الشخصي</span> <b>←</b></button><button onClick={() => setNotice({ kind: "info", text: "إعدادات الخصوصية والأمان قيد الإضافة." })}>◈ <span>الخصوصية والأمان</span> <b>←</b></button><button onClick={() => setNotice({ kind: "info", text: "سجل النشاط والمعاملات قيد الإضافة." })}>◷ <span>سجل النشاط</span> <b>←</b></button><button onClick={() => void logout()} className="logout-row">↪ <span>تسجيل الخروج</span> <b>←</b></button></div>
       </section>}
 
       <nav className="bottom-nav">{navigation.map((item) => <button key={item.id} className={tab === item.id ? "nav-active" : ""} onClick={() => setTab(item.id)}><span>{item.icon}</span><small>{item.label}</small></button>)}</nav>
 
       {createRoomOpen && <div className="modal-backdrop" onClick={() => setCreateRoomOpen(false)}><form className="modal-card" onSubmit={submitRoom} onClick={(e) => e.stopPropagation()}><div className="modal-heading"><div><span className="kicker">ابدأ اللمة</span><h2>إنشاء غرفة صوتية</h2></div><button type="button" onClick={() => setCreateRoomOpen(false)}>×</button></div><label>اسم الغرفة<input required minLength={3} maxLength={40} value={roomName} onChange={(e)=>setRoomName(e.target.value)} placeholder="مثلاً: سهرات حكاوي" /></label><label>وصف الغرفة<textarea value={roomDescription} maxLength={160} onChange={(e)=>setRoomDescription(e.target.value)} placeholder="قول للناس هيتكلموا عن إيه..." /></label><label>التصنيف<select value={roomCategory} onChange={(e)=>setRoomCategory(e.target.value)}><option>دردشة</option><option>تعرف على أصحاب</option><option>موسيقى</option><option>ألعاب</option><option>شعر وثقافة</option></select></label><button className="primary-button full" type="submit">إنشاء الغرفة</button></form></div>}
+
+      {editProfileOpen && <div className="modal-backdrop" onClick={() => setEditProfileOpen(false)}><form className="modal-card" onSubmit={submitProfile} onClick={(event) => event.stopPropagation()}><div className="modal-heading"><div><span className="kicker">حسابك وهويتك</span><h2>تعديل الملف الشخصي</h2></div><button type="button" onClick={() => setEditProfileOpen(false)}>×</button></div><label>الاسم الظاهر<input required minLength={2} maxLength={40} value={profileName} onChange={(event) => setProfileName(event.target.value)} placeholder="اكتب اسمك" /></label><label>نبذة عنك<textarea maxLength={160} value={profileBio} onChange={(event) => setProfileBio(event.target.value)} placeholder="عرف أصحابك بنفسك..." /></label><button className="primary-button full" type="submit" disabled={profileSaving}>{profileSaving ? "جاري الحفظ..." : "حفظ التعديلات"}</button></form></div>}
 
       {commentMoment && <div className="modal-backdrop" onClick={() => setCommentMoment(null)}><section className="modal-card comments-modal" onClick={(e)=>e.stopPropagation()}><div className="modal-heading"><div><span className="kicker">نقاش المجتمع</span><h2>التعليقات</h2></div><button onClick={()=>setCommentMoment(null)}>×</button></div><div className="comments-list">{comments.length===0?<p className="subtle">لسه مفيش تعليقات. ابدأ الحوار.</p>:comments.map((comment)=><div className="comment-row" key={comment.id}><b>{comment.authorName}</b><p>{comment.text}</p></div>)}</div><form className="comment-form" onSubmit={submitComment}><input value={commentText} onChange={(e)=>setCommentText(e.target.value)} placeholder="اكتب تعليقك..." maxLength={1000} /><button className="primary-button" type="submit" disabled={!commentText.trim()}>إرسال</button></form></section></div>}
 
