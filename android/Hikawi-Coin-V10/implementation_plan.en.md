@@ -1,6 +1,6 @@
 # Hikawi Coin Redesign Plan
 
-A comprehensive engineering and design vision document for **Hikawi Coin**, covering visual mockups, the six-section bottom navigation structure, the 27-seat voice-room system, the vertical live-streaming experience, the Moments feed, the Games Center, instant messaging, and the premium profile studio.
+A comprehensive engineering and design vision document for **Hikawi Coin**, including visual previews, the six-section bottom navigation structure, the 27-seat voice-room system, the vertical live-streaming experience, the Moments social feed, the Games Center, instant messaging, and the premium profile studio.
 
 ---
 
@@ -8,16 +8,16 @@ A comprehensive engineering and design vision document for **Hikawi Coin**, cove
 
 > [!IMPORTANT]
 > **Current project inspection result:**
-> The current project files and structure have been inspected. The repository contains a clean, new Android foundation built with Jetpack Compose; no previous services have been deleted and no databases have been replaced. The app will be built with a clean architecture that is ready for direct integration with Firebase and Agora, as requested, without affecting any future data.
+> The current project files and structure have been inspected. The repository contains a clean, new Android foundation built with Jetpack Compose; no previous services have been deleted and no databases have been replaced. We will build the app on a clean architecture that is fully prepared for direct integration with Firebase and Agora, as requested, without affecting any future data.
 
 - **Visual identity:** A luxurious royal style combining deep carbon black and polished metallic gold, with amber and ivory accents, clear Arabic typography, and full right-to-left (RTL) support.
-- **Bottom navigation (6 sections, in order):**
+- **Bottom navigation sections (6, in order):**
   1. **Voice Rooms:** Promotional banner, featured and active rooms, search, and room creation.
-  2. **Live Stream:** Interactive vertical video experience inspired by TikTok, with vertical scrolling, floating hearts, and live comments.
-  3. **Moments:** A Facebook-style social feed for posts, media, and interactions.
+  2. **Live Stream:** An interactive vertical video experience in the style of TikTok, with vertical scrolling, floating hearts, and live comments.
+  3. **Moments:** A Facebook-style social network feed for posts, media, and interactions.
   4. **Games:** A hub for multiplayer games and challenges (Ludo, Fortune Wheel, and room challenges), with leaderboards.
-  5. **Messages:** A WhatsApp-style instant messaging experience with individual and group chats, plus voice notes.
-  6. **Profile:** User profile, royal wallet (Coins and Diamonds), customization studio, and frame/title editing.
+  5. **Messages:** WhatsApp-style instant messaging with individual and group conversations and voice notes.
+  6. **Profile:** User profile, royal wallet (Coins and Diamonds), customization studio, and frame and title editing.
 
 ---
 
@@ -26,10 +26,10 @@ A comprehensive engineering and design vision document for **Hikawi Coin**, cove
 ### 1. Voice Room Screen and 27-Seat System
 ![27-seat voice room preview](/src/assets/images/hikawi_voice_room_ui_1794035282353.jpg)
 
-### 2. Main Navigation and Home Screen
+### 2. Main Navigation Bar and Home Screen
 ![Home page and navigation preview](/src/assets/images/hikawi_home_nav_ui_1794035283314.jpg)
 
-### 3. Interactive Live Streaming Experience (TikTok Style)
+### 3. Interactive Live-Streaming Experience (TikTok Style)
 ![Live streaming preview](/src/assets/images/hikawi_live_stream_ui_1794035304638.jpg)
 
 ### 4. Social Moments Feed
@@ -52,18 +52,18 @@ A comprehensive engineering and design vision document for **Hikawi Coin**, cove
 ```
 
 ### Premium Bottom Navigation Bar
-- A polished floating background with a subtle dark-and-gold gradient and rounded edges (`RoundedCornerShape(24.dp)`).
+- A polished floating background with a subtle dark-and-gold gradient and rounded corners (`RoundedCornerShape(24.dp)`).
 - An active-state indicator with a golden glow and pulsing effect (`Golden Glow Effect`).
-- Clear Arabic labels at 11sp, icons at 26dp, and comfortable touch targets of 48dp or larger.
+- Clear Arabic labels at 11sp, icons at 26dp, and comfortable touch targets (48dp+).
 
 ---
 
 ## 2. Section Details and Features
 
-### Section 1: Voice Rooms and Microphones (27 Seats)
+### Section One: Voice Rooms and Microphones (27 Seats)
 - **VIP Audio Stage:**
-  - **Host platform:** A prominent main seat with a golden crown and a speaking indicator waveform (`Audio Waveform`).
-  - **27 seats:** Arranged in 3 balanced rows (9 seats per row), with circular gold frames and seat numbers (1–27).
+  - **Host platform:** A prominent main seat with a golden crown and a speaking waveform indicator (`Audio Waveform`).
+  - **The 27 seats:** Arranged in 3 balanced rows (9 seats per row), with circular gold frames and seat numbers (1–27).
   - **Seat states:** Available (+), speaking (pulsing gold ring), muted (slashed red microphone icon), and locked (gold lock).
   - **Bottom control panel:**
     - Personal microphone unmute/mute button with an interactive golden effect.
@@ -73,13 +73,13 @@ A comprehensive engineering and design vision document for **Hikawi Coin**, cove
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                       Voice Room Stage                      │
+│                    Voice Room Stage                         │
 │                                                             │
 │       👑 [Host - Level 50] 🌟 [Moderator 1] 🌟 [Moderator 2] │
 │                                                             │
 │ Row 1:  ( 1 ) ( 2 ) ( 3 ) ( 4 ) ( 5 ) ( 6 ) ( 7 ) ( 8 ) ( 9 ) │
-│ Row 2:  (10) (11) (12) (13) (14) (15) (16) (17) (18)       │
-│ Row 3:  (19) (20) (21) (22) (23) (24) (25) (26) (27)       │
+│ Row 2: (10) (11) (12) (13) (14) (15) (16) (17) (18)       │
+│ Row 3: (19) (20) (21) (22) (23) (24) (25) (26) (27)       │
 │                                                             │
 │ [Live room chat, greetings, and flowing gifts...]          │
 │                                                             │
@@ -87,36 +87,36 @@ A comprehensive engineering and design vision document for **Hikawi Coin**, cove
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Section 2: Live Stream
-- Full-screen video with vertical scrolling to move quickly between content creators.
-- A top bar containing the broadcaster's profile picture, follower count, quick Follow button, and top supporters list.
-- Floating buttons along the right side (Like, Send Gifts, Share, and Filters).
+### Section Two: Live Stream
+- A full-screen video with vertical scrolling to move quickly between content creators.
+- A top bar containing the broadcaster's profile picture, follower count, quick Follow button, and a list of top supporters.
+- A set of floating buttons on the right side (Like, Send Gifts, Share, and Filters).
 - A bottom bar for writing comments and sending animated golden hearts.
 
-### Section 3: Moments
-- A top composer for sharing text, images, video clips, and voice messages.
+### Section Three: Moments
+- A top publishing composer for sharing text, images, video clips, and voice messages.
 - Premium social post cards with dark backgrounds and subtle gold borders.
 - Interaction buttons: golden Like, Comment, and Share, with privacy, report, and block options.
 
-### Section 4: Games Center
+### Section Four: Games Center
 - Interactive game cards:
-  - **Ludo Coin:** The classic game with a gold Arabic-inspired design and support for 2- or 4-player matches.
+  - **Ludo Coin:** The classic game with a gold Arabic-inspired design and matches for 2 or 4 players.
   - **Royal Fortune Wheel:** A daily opportunity to win Coins and Diamonds.
   - **Quiz and Speed Challenge:** Live competitions between room members.
 - Daily and weekly leaderboards with prizes.
 
-### Section 5: Messages
+### Section Five: Messages
 - Tabs for individual and group conversations.
-- An instant messaging interface supporting text messages, voice-note recording with an audio waveform indicator, and image sharing.
+- An instant messaging interface with text messages, voice-note recording with an audio waveform indicator, and image sharing.
 - Message status indicators (Sent ✓, Delivered ✓✓, and Read in gold).
 
-### Section 6: Profile and Customization Studio
+### Section Six: Profile and Customization Studio
 - **Royal Wallet:** Coin balance (gold currency) and Diamond balance, with quick top-up and withdrawal buttons and a transaction history.
 - **Live Customization Studio:**
   - Avatar frame previews (Golden Dragon Frame, Royal Falcon Frame, and Diamond Frame).
-  - Colored chat bubble previews.
+  - Colored chat-bubble previews.
   - Royal honorary titles and special room-entry effects.
-  - Screens for editing the display name, bio, profile picture, and cover, with a direct Save button.
+  - A screen for editing the display name, bio, profile picture, and cover, with a direct Save button.
 
 ---
 
@@ -164,12 +164,12 @@ A comprehensive engineering and design vision document for **Hikawi Coin**, cove
 
 ---
 
-## Next Implementation Steps
+## Next Implementation Step
 
-After you review this document and the attached visual mockups and press the **Proceed** button:
+Once you have reviewed this document and the attached visual previews, and pressed the **Proceed** button:
 
 1. Update `metadata.json` and the app name in `strings.xml` to **Hikawi Coin**.
 2. Create the royal color system (`Theme.kt` and `Color.kt`) with full RTL support.
 3. Build the premium six-section bottom navigation bar.
 4. Implement all six screens, including the interactive 27-seat stage and the customization studio.
-5. Verify that the project builds without compilation errors using `compile_applet`.
+5. Verify that the project builds without any compilation errors using `compile_applet`.
