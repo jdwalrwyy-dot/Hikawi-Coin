@@ -8,7 +8,7 @@ import type { LiveRoomRecord, MomentComment, MomentRecord } from "./firebase";
 import {
   auth, db, isFirebaseConfigured, saveUserProfile, subscribePublicRooms,
   createLiveRoom, joinLiveRoom, subscribeMoments, createMoment, toggleMomentLike,
-  hasLikedMoment, subscribeMomentComments, addMomentComment, updateMyProfile,
+  hasLikedMoment, subscribeMomentComments, addMomentComment, updateMyProfile, getMyProfileBio,
 } from "./firebase";
 
 type Tab = "home" | "live" | "moments" | "games" | "messages" | "profile";
@@ -98,7 +98,7 @@ export default function App() {
     return onAuthStateChanged(auth, async (nextUser) => {
       setUser(nextUser);
       if (nextUser) {
-        try { await saveUserProfile(nextUser); }
+        try { await saveUserProfile(nextUser); setProfileBio(await getMyProfileBio(nextUser.uid)); }
         catch (error) { setNotice({ kind: "error", text: friendlyError(error) }); }
       }
       setAuthReady(true);
@@ -220,7 +220,7 @@ export default function App() {
     try {
       await updateMyProfile(user.uid, { displayName: profileName, bio: profileBio });
       await updateAuthProfile(auth.currentUser, { displayName: profileName.trim() });
-      setUser({ ...auth.currentUser });
+      setUser(auth.currentUser);
       setEditProfileOpen(false);
       setNotice({ kind: "success", text: "تم تحديث ملفك الشخصي." });
     } catch (error) {
@@ -359,7 +359,7 @@ export default function App() {
       </section>}
 
       {tab === "profile" && <section className="page-content">
-        <div className="profile-hero"><Avatar user={user} size="large" /><h1>{user.displayName || "عضو حكاوي"}</h1><p>{user.email || user.phoneNumber || "حساب حكاوي"}</p><p className="profile-bio">{(user as User & { bio?: string }).bio || "اكتب نبذة بسيطة تعرف بيها أصحابك عليك."}</p><button className="outline-small profile-edit-button" onClick={() => { setProfileName(user.displayName || ""); setProfileBio((user as User & { bio?: string }).bio || ""); setEditProfileOpen(true); }}>تعديل الملف الشخصي</button><span className="member-badge">عضو في حكاوي كوين</span></div>
+        <div className="profile-hero"><Avatar user={user} size="large" /><h1>{user.displayName || "عضو حكاوي"}</h1><p>{user.email || user.phoneNumber || "حساب حكاوي"}</p><p className="profile-bio">{profileBio || "اكتب نبذة بسيطة تعرف بيها أصحابك عليك."}</p><button className="outline-small profile-edit-button" onClick={() => { setProfileName(user.displayName || ""); setProfileBio(profileBio); setEditProfileOpen(true); }}>تعديل الملف الشخصي</button><span className="member-badge">عضو في حكاوي كوين</span></div>
         <div className="settings-list"><button onClick={() => { setProfileName(user.displayName || ""); setProfileBio((user as User & { bio?: string }).bio || ""); setEditProfileOpen(true); }}>✎ <span>تعديل الملف الشخصي</span> <b>←</b></button><button onClick={() => setNotice({ kind: "info", text: "إعدادات الخصوصية والأمان قيد الإضافة." })}>◈ <span>الخصوصية والأمان</span> <b>←</b></button><button onClick={() => setNotice({ kind: "info", text: "سجل النشاط والمعاملات قيد الإضافة." })}>◷ <span>سجل النشاط</span> <b>←</b></button><button onClick={() => void logout()} className="logout-row">↪ <span>تسجيل الخروج</span> <b>←</b></button></div>
       </section>}
 
