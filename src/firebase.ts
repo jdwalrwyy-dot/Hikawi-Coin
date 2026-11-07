@@ -40,6 +40,12 @@ export async function saveUserProfile(user: User): Promise<void> {
   }, { merge: true });
 }
 
+export async function getMyProfileBio(uid: string): Promise<string> {
+  if (!db) return "";
+  const snapshot = await getDoc(doc(db, "users", uid));
+  return snapshot.exists() && typeof snapshot.data().bio === "string" ? snapshot.data().bio : "";
+}
+
 export async function updateMyProfile(uid: string, input: { displayName: string; bio: string }): Promise<void> {
   if (!db) throw new Error("قاعدة البيانات غير متاحة.");
   const displayName = input.displayName.trim();
