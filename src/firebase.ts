@@ -2,7 +2,7 @@ import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { getAuth, type User } from "firebase/auth";
 import {
   addDoc, collection, doc, getDoc, getFirestore, limit, onSnapshot,
-  orderBy, query, runTransaction, serverTimestamp, setDoc, where,
+  orderBy, query, runTransaction, serverTimestamp, setDoc, updateDoc, where,
   type Unsubscribe,
 } from "firebase/firestore";
 import { getDownloadURL, getStorage, ref, uploadBytes } from "firebase/storage";
@@ -38,6 +38,25 @@ export async function saveUserProfile(user: User): Promise<void> {
     lastSignInAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   }, { merge: true });
+}
+
+export async function getMyProfileBio(uid: string): Promise<string> {
+  if (!db) return "";
+  const snapshot = await getDoc(doc(db, "users", uid));
+  return snapshot.exists() && typeof snapshot.data().bio === "string" ? snapshot.data().bio : "";
+}
+
+export async function updateMyProfile(uid: string, input: { displayName: string; bio: string }): Promise<void> {
+  if (!db) throw new Error("قاعدة البيانات غير متاحة.");
+  const displayName = input.displayName.trim();
+  const bio = input.bio.trim();
+  if (displayName.length < 2 || displayName.length > 40) throw new Error("الاسم لازم يكون من حرفين إلى 40 حرف.");
+  if (bio.length > 160) throw new Error("النبذة لا تزيد عن 160 حرف.");
+  await updateDoc(doc(db, "users", uid), {
+    displayName,
+    bio,
+    updatedAt: serverTimestamp(),
+  });
 }
 
 export interface LiveRoomRecord {
