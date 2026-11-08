@@ -4,12 +4,12 @@ import {
   signInWithPhoneNumber, signInWithPopup, signOut, updateProfile,
   type ConfirmationResult, type User,
 } from "firebase/auth";
-import type { LiveRoomRecord, MomentComment, MomentRecord } from "./firebase";
+import type { LiveRoomRecord, MomentComment, MomentRecord, FriendRecord, ChatMessageRecord } from "./firebase";
 import {
   auth, db, isFirebaseConfigured, saveUserProfile, subscribePublicRooms,
   createLiveRoom, joinLiveRoom, subscribeMoments, createMoment, toggleMomentLike,
   hasLikedMoment, subscribeMomentComments, addMomentComment, loadMoreMoments,
-  updateMomentText, deleteMoment, reportMoment,
+  updateMomentText, deleteMoment, reportMoment, subscribeFriends, ensureFriendConversation, subscribeChatMessages, sendChatMessage,
 } from "./firebase";
 
 type Tab = "home" | "live" | "moments" | "games" | "messages" | "profile";
@@ -95,6 +95,12 @@ export default function App() {
   const [profileEditOpen, setProfileEditOpen] = useState(false);
   const [profileName, setProfileName] = useState("");
   const [profileSaving, setProfileSaving] = useState(false);
+  const [friends, setFriends] = useState<FriendRecord[]>([]);
+  const [selectedFriend, setSelectedFriend] = useState<FriendRecord | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessageRecord[]>([]);
+  const [chatDraft, setChatDraft] = useState("");
+  const [chatSending, setChatSending] = useState(false);
+  const [chatLoading, setChatLoading] = useState(false);
   const filteredRooms = roomFilter === "الكل" ? rooms : rooms.filter((room) => room.category === roomFilter);
 
   useEffect(() => {
@@ -120,6 +126,34 @@ export default function App() {
     }, (error) => setNotice({ kind: "error", text: friendlyError(error) }));
     return () => { stopRooms(); stopMoments(); };
   }, [user]);
+
+  useEffect(() => {
+    if (!user || !db) { setFriends([]); setSelectedFriend(null); setChatMessages([]); return; }
+    return subscribeFriends(user.uid, setFriends, (error) => setNotice({ kind: "error", text: friendlyError(error) }));
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || !selectedFriend) { setChatMessages([]); return; }
+    let active = true;
+    let stop: (() => void) | undefined;
+    setChatLoading(true);
+    setChatMessages([]);
+    void ensureFriendConversation(selectedFriend, user.uid).then(() => {
+      if (!active) return;
+      stop = subscribeChatMessages(selectedFriend.pairId, (items) => { setChatMessages(items); setChatLoading(false); },
+        (error) => { setChatLoading(false); setNotice({ kind: "error", text: friendlyError(error) }); });
+    }).catch((error) => { if (active) { setChatLoading(false); setNotice({ kind: "error", text: friendlyError(error) }); } });
+    return () => { active = false; stop?.(); };
+  }, [user, selectedFriend]);
+
+  async function submitChatMessage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!user || !selectedFriend || !chatDraft.trim()) return;
+    setChatSending(true);
+    try { await sendChatMessage(selectedFriend.pairId, user.uid, chatDraft); setChatDraft(""); }
+    catch (error) { setNotice({ kind: "error", text: friendlyError(error) }); }
+    finally { setChatSending(false); }
+  }
 
   useEffect(() => {
     if (!user || !db || moments.length === 0) { setLikedIds([]); return; }
@@ -529,8 +563,15 @@ export default function App() {
       </section>}
 
       {tab === "messages" && <section className="page-content">
-        <div className="page-heading"><span className="kicker">قريبين دايمًا</span><h1>الرسائل</h1><p>محادثاتك ومكالماتك الخاصة.</p></div>
-        <div className="messages-empty"><div className="chat-bubbles">💬</div><h2>محادثاتك في مكانها</h2><p>واجهة الرسائل جاهزة للتصميم، لكن المحادثات المشفرة والمكالمات الصوتية والمرئية تحتاج خدمة محادثات واتصال وخادم لإدارة الأصدقاء. مش هنفتح رسائل وهمية أو مكالمات لا تتصل.</p><button className="ghost-button" onClick={() => setNotice({ kind: "info", text: "المرحلة التالية: الأصدقاء والمحادثات والمكالمات عبر RTC." })}>عرض حالة تجهيز الرسائل</button></div>
+        <div className="page-heading"><span className="kicker">قريبين دايمًا</span><h1>الرسائل</h1><p>اختار صديق من قائمة أصدقائك لبدء محادثة خاصة.</p></div>
+        {!selectedFriend ? <div className="friends-list">
+          {friends.length === 0 ? <div className="messages-empty"><div className="chat-bubbles">💬</div><h2>لسه مفيش أصدقاء ظاهرين</h2><p>هنا هتظهر الحسابات المرتبطة بسجلات الصداقة المقبولة في Firebase. طلبات الصداقة الجديدة وإدارتها مش مضافة في الشاشة دي لسه.</p></div> :
+            friends.map((friend) => <button className="friend-row" key={friend.pairId} onClick={() => setSelectedFriend(friend)}><div className="friend-avatar">{friend.photoURL ? <img src={friend.photoURL} alt="" /> : <span>{friend.displayName.slice(0,1)}</span>}</div><span className="friend-meta"><b>{friend.displayName}</b><small>صديق في حكاوي كوين</small></span><b className="friend-arrow">←</b></button>)}
+        </div> : <div className="chat-panel">
+          <div className="chat-header"><button className="ghost-button" onClick={() => setSelectedFriend(null)}>رجوع للأصدقاء</button><b>{selectedFriend.displayName}</b></div>
+          <div className="chat-messages">{chatLoading ? <p className="chat-empty">جاري تحميل المحادثة...</p> : chatMessages.length === 0 ? <p className="chat-empty">ابدأ أول رسالة بينك وبين {selectedFriend.displayName}.</p> : chatMessages.map((message) => <div key={message.id} className={message.senderUid === user?.uid ? "chat-bubble own" : "chat-bubble"}>{message.text}</div>)}</div>
+          <form className="chat-compose" onSubmit={submitChatMessage}><input value={chatDraft} onChange={(e) => setChatDraft(e.target.value)} maxLength={4000} placeholder="اكتب رسالتك..." /><button className="primary-button" disabled={chatSending || !chatDraft.trim()}>{chatSending ? "..." : "إرسال"}</button></form>
+        </div>}
       </section>}
 
       {tab === "profile" && <section className="page-content">
