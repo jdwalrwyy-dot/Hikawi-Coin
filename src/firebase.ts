@@ -245,3 +245,53 @@ export async function addMomentComment(momentId: string, user: User, text: strin
     createdAt: serverTimestamp(),
   });
 }
+
+export interface FriendRecord { pairId: string; uid: string; displayName: string; photoURL: string | null; }
+export interface ChatMessageRecord { id: string; senderUid: string; text: string; createdAt?: unknown; }
+export function subscribeFriends(uid: string, onFriends: (friends: FriendRecord[]) => void, onError: (error: Error) => void): Unsubscribe {
+  if (!db) throw new Error("قاعدة البيانات غير متاحة.");
+  return onSnapshot(query(collection(db, "friendships"), where("memberUids", "array-contains", uid)), async (snapshot) => {
+    try {
+      const friends = await Promise.all(snapshot.docs.map(async (friendship) => {
+        const members = friendship.data().memberUids;
+        if (!Array.isArray(members)) return null;
+        const friendUid = members.find((member) => member !== uid);
+        if (typeof friendUid !== "string") return null;
+        const profile = await getDoc(doc(db!, "users", friendUid));
+        if (!profile.exists()) return { pairId: friendship.id, uid: friendUid, displayName: "عضو حكاوي", photoURL: null };
+        const data = profile.data();
+        return { pairId: friendship.id, uid: friendUid, displayName: data.displayName || "عضو حكاوي", photoURL: data.photoURL || null };
+      }));
+      onFriends(friends.filter((friend): friend is FriendRecord => friend !== null));
+    } catch (error) { onError(error instanceof Error ? error : new Error("تعذر تحميل قائمة الأصدقاء.")); }
+  }, onError);
+}
+export async function ensureFriendConversation(friend: FriendRecord, uid: string): Promise<void> {
+  if (!db) throw new Error("قاعدة البيانات غير متاحة.");
+  const friendship = await getDoc(doc(db, "friendships", friend.pairId));
+  if (!friendship.exists() || !Array.isArray(friendship.data().memberUids) || !friendship.data().memberUids.includes(uid) || !friendship.data().memberUids.includes(friend.uid)) {
+    throw new Error("الصداقة غير موجودة أو لم تعد نشطة.");
+  }
+  const conversationRef = doc(db, "conversations", friend.pairId);
+  const conversation = await getDoc(conversationRef);
+  if (!conversation.exists()) {
+    await setDoc(conversationRef, { memberUids: friendship.data().memberUids, lastMessageAt: serverTimestamp(), lastMessagePreview: "" });
+  }
+}
+export function subscribeChatMessages(pairId: string, onMessages: (messages: ChatMessageRecord[]) => void, onError: (error: Error) => void): Unsubscribe {
+  if (!db) throw new Error("قاعدة البيانات غير متاحة.");
+  return onSnapshot(query(collection(db, "conversations", pairId, "messages"), orderBy("createdAt", "asc"), limit(100)),
+    (snapshot) => onMessages(snapshot.docs.map((item) => ({ id: item.id, ...item.data() } as ChatMessageRecord))), onError);
+}
+export async function sendChatMessage(pairId: string, uid: string, text: string): Promise<void> {
+  if (!db) throw new Error("قاعدة البيانات غير متاحة.");
+  const clean = text.trim();
+  if (!clean || clean.length > 4000) throw new Error("الرسالة لازم تكون من حرف إلى 4000 حرف.");
+  const conversationRef = doc(db, "conversations", pairId);
+  const conversation = await getDoc(conversationRef);
+  if (!conversation.exists() || !Array.isArray(conversation.data().memberUids) || !conversation.data().memberUids.includes(uid)) {
+    throw new Error("المحادثة غير متاحة لحسابك.");
+  }
+  await addDoc(collection(conversationRef, "messages"), { senderUid: uid, text: clean, createdAt: serverTimestamp() });
+  await updateDoc(conversationRef, { lastMessageAt: serverTimestamp(), lastMessagePreview: clean.slice(0, 120) });
+}
