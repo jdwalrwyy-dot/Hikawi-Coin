@@ -169,7 +169,7 @@ export default function App() {
       const picked = await picker.select(["tel"], { multiple: true });
       const numbers = [...new Set(picked.flatMap((contact) => contact.tel || [])
         .map((value) => phoneToE164(value))
-        .filter((value) => /^\\+[1-9]\\d{7,14}$/.test(value)))].slice(0, 250);
+        .filter((value) => /^\+[1-9]\d{7,14}$/.test(value)))].slice(0, 250);
       if (numbers.length === 0) {
         setNotice({ kind: "info", text: "ما اخترتش أرقامًا صالحة للمزامنة." });
         return;
