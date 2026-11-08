@@ -10,7 +10,7 @@ const contactHashSecret = defineSecret("CONTACT_HASH_SECRET");
 function normalizePhone(value) {
   if (typeof value !== "string") return null;
   const raw = value.trim();
-  const digits = raw.replace(/\\D/g, "");
+  const digits = raw.replace(/\D/g, "");
   if (!digits) return null;
   if (raw.startsWith("+")) return digits.length >= 8 && digits.length <= 15 ? `+${digits}` : null;
   if (digits.startsWith("00")) return digits.length >= 10 && digits.length <= 17 ? `+${digits.slice(2)}` : null;
