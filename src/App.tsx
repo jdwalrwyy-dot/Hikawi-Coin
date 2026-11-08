@@ -291,6 +291,21 @@ export default function App() {
 
       {tab === "home" && <section className="page-content">
         <div className="welcome-strip"><div><span className="kicker">مساء الخير</span><h1>{user.displayName || "صاحب حكاوي"} 👋</h1><p>مستنيين حكايتك النهارده.</p></div><div className="welcome-symbol">✦</div></div>
+        <section className="v10-home-hero">
+          <div className="v10-hero-copy">
+            <span className="kicker">عالمك الملكي في حكاوي</span>
+            <h1>كل حكاية تبدأ بلمة</h1>
+            <p>ادخل غرفتك المفضلة، قابل ناس جديدة وشارك لحظاتك.</p>
+            <button className="v10-hero-action" onClick={() => setCreateRoomOpen(true)}>＋ أنشئ غرفتك</button>
+          </div>
+          <div className="v10-hero-crown" aria-hidden="true">♛</div>
+          <span className="v10-hero-orbit orbit-one" aria-hidden="true" />
+          <span className="v10-hero-orbit orbit-two" aria-hidden="true" />
+        </section>
+        <section className="v10-featured-section">
+          <div className="section-title"><div><span className="kicker">من مجتمع حكاوي</span><h2>غرف تستحق الزيارة</h2></div><span className="v10-live-count">{rooms.length} غرفة</span></div>
+          {rooms.length > 0 ? <div className="v10-featured-rooms">{rooms.slice(0, 3).map((room, index) => <button className="v10-featured-room" key={room.id} onClick={() => void enterRoom(room)}><span className="v10-featured-medal">{["✦","♛","✧"][index]}</span><span className="v10-featured-info"><b>{room.name}</b><small>{room.ownerName} · {room.category || "غرفة صوتية"}</small></span><span className="v10-featured-enter">دخول ←</span></button>)}</div> : <div className="v10-featured-empty">أول غرفة هتظهر هنا بمجرد إنشائها.</div>}
+        </section>
         <section className="section-block">
           <div className="section-title"><div><span className="kicker">اتكلم واتعرف</span><h2>الغرف الصوتية</h2></div><button className="outline-small" onClick={() => setCreateRoomOpen(true)}>＋ غرفة جديدة</button></div>
           <div className="room-categories">{["الكل","دردشة","تعرف على أصحاب","موسيقى","ألعاب"].map((x) => <button key={x} onClick={() => setRoomFilter(x)} className={roomFilter === x ? "category-active" : ""}>{x}</button>)}</div>
