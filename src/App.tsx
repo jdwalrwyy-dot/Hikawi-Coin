@@ -347,9 +347,26 @@ export default function App() {
         <section className="promo-card"><div><span className="kicker">حكاوي تجمعنا</span><h2>صوتك مسموع هنا</h2><p>شارك أصحابك لحظاتك وافتح مساحة جديدة للكلام.</p></div><div className="promo-emoji">💬</div></section>
       </section>}
 
-      {tab === "live" && <section className="page-content">
-        <div className="page-heading"><span className="kicker">شاهد وشارك</span><h1>البث المباشر</h1><p>تابع صناع المحتوى وشارك في البثوث الحية.</p></div>
-        <div className="live-empty"><div className="live-emblem">▶</div><h2>منصة البث في مرحلة التجهيز</h2><p>هنربط الفيديو المباشر والهدايا والتعليقات ومشاركة الضيوف بخدمة بث حقيقية، بدل عرض بث تجريبي على إنه مباشر.</p><button className="primary-button" onClick={() => setNotice({ kind: "info", text: "مطلوب إعداد مزود بث RTC ومفاتيح الخادم قبل بدء بث حقيقي." })}>تفاصيل تجهيز البث</button></div>
+      {tab === "live" && <section className="page-content v10-live-page">
+        <div className="page-heading v10-live-heading"><span className="kicker">حكاوي لايف</span><h1>البث المباشر</h1><p>لحظات حقيقية، أصوات قريبة، وحكايات بتتشارك مع الكل.</p></div>
+        <section className="v10-live-hero">
+          <div className="v10-live-hero-copy"><span className="v10-live-pill"><i /> عالم البث</span><h2>خليك نجم الحكاية</h2><p>جهّز بثك وشارك جمهورك لحظاتك أول ما يتم تفعيل خدمة البث المباشر.</p>
+            <button className="v10-live-start" onClick={() => setNotice({ kind: "info", text: "بدء البث غير متاح حالياً. يلزم أولاً إعداد مزود بث RTC ومفاتيح الخادم واختبار الاتصال." })}>＋ تجهيز بث جديد</button>
+          </div>
+          <div className="v10-live-visual" aria-hidden="true"><div className="v10-live-ring"><span>▶</span></div><b>LIVE</b><i className="live-spark spark-a">✦</i><i className="live-spark spark-b">✧</i></div>
+        </section>
+        <div className="v10-live-section-title"><div><span className="kicker">اكتشف المجتمع</span><h2>البثوث المباشرة</h2></div><span className="v10-live-count">متاح قريباً</span></div>
+        <section className="v10-live-empty">
+          <div className="v10-live-empty-art"><span>◉</span><i>✦</i></div>
+          <h3>مفيش بث مباشر متاح دلوقتي</h3>
+          <p>لما يتم ربط خدمة الفيديو المباشر، هتظهر البثوث هنا وتقدر تدخل وتتفاعل مع أصحابها.</p>
+        </section>
+        <section className="v10-live-features">
+          <div><span>▣</span><b>بث فيديو مباشر</b><small>مشاهدة بجودة مناسبة</small></div>
+          <div><span>♡</span><b>تفاعل وهدايا</b><small>تعليقات وتفاعل لحظي</small></div>
+          <div><span>♧</span><b>ضيوف ومشاركة</b><small>مساحة تجمع أصحابك</small></div>
+        </section>
+        <div className="v10-live-note">ملاحظة: العناصر دي بتوضح المزايا المستهدفة للتصميم، ومش مفعّلة قبل ربط واختبار خدمة البث الحقيقية.</div>
       </section>}
 
       {tab === "moments" && <section className="page-content">
