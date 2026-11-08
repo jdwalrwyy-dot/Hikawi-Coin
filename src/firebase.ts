@@ -250,20 +250,17 @@ export interface FriendRecord { pairId: string; uid: string; displayName: string
 export interface ChatMessageRecord { id: string; senderUid: string; text: string; createdAt?: unknown; }
 export function subscribeFriends(uid: string, onFriends: (friends: FriendRecord[]) => void, onError: (error: Error) => void): Unsubscribe {
   if (!db) throw new Error("قاعدة البيانات غير متاحة.");
-  return onSnapshot(query(collection(db, "friendships"), where("memberUids", "array-contains", uid)), async (snapshot) => {
-    try {
-      const friends = await Promise.all(snapshot.docs.map(async (friendship) => {
-        const members = friendship.data().memberUids;
-        if (!Array.isArray(members)) return null;
-        const friendUid = members.find((member) => member !== uid);
-        if (typeof friendUid !== "string") return null;
-        const profile = await getDoc(doc(db!, "users", friendUid));
-        if (!profile.exists()) return { pairId: friendship.id, uid: friendUid, displayName: "عضو حكاوي", photoURL: null };
-        const data = profile.data();
-        return { pairId: friendship.id, uid: friendUid, displayName: data.displayName || "عضو حكاوي", photoURL: data.photoURL || null };
-      }));
-      onFriends(friends.filter((friend): friend is FriendRecord => friend !== null));
-    } catch (error) { onError(error instanceof Error ? error : new Error("تعذر تحميل قائمة الأصدقاء.")); }
+  return onSnapshot(query(collection(db, "friendships"), where("memberUids", "array-contains", uid)), (snapshot) => {
+    const friends = snapshot.docs.flatMap((friendship) => {
+      const members = friendship.data().memberUids;
+      if (!Array.isArray(members)) return [];
+      const friendUid = members.find((member) => member !== uid);
+      if (typeof friendUid !== "string") return [];
+      // User profile reads are intentionally restricted by current Firestore rules.
+      // Keep this list privacy-safe until profile visibility is explicitly authorized.
+      return [{ pairId: friendship.id, uid: friendUid, displayName: "صديق", photoURL: null }];
+    });
+    onFriends(friends);
   }, onError);
 }
 export async function ensureFriendConversation(friend: FriendRecord, uid: string): Promise<void> {
