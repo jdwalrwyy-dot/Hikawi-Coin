@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   GoogleAuthProvider, RecaptchaVerifier, onAuthStateChanged,
-  signInWithPhoneNumber, signInWithPopup, signOut,
+  signInWithPhoneNumber, signInWithPopup, signOut, updateProfile,
   type ConfirmationResult, type User,
 } from "firebase/auth";
 import type { LiveRoomRecord, MomentComment, MomentRecord } from "./firebase";
@@ -92,6 +92,9 @@ export default function App() {
   const [gameIndex, setGameIndex] = useState(0);
   const [gameScore, setGameScore] = useState(0);
   const [answered, setAnswered] = useState<number | null>(null);
+  const [profileEditOpen, setProfileEditOpen] = useState(false);
+  const [profileName, setProfileName] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
   const filteredRooms = roomFilter === "الكل" ? rooms : rooms.filter((room) => room.category === roomFilter);
 
   useEffect(() => {
@@ -180,6 +183,26 @@ export default function App() {
     try { await confirmation.confirm(code.trim()); }
     catch (error) { setNotice({ kind: "error", text: friendlyError(error) }); }
     finally { setBusy(false); }
+  }
+
+  async function saveProfile(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!auth?.currentUser || !user) return;
+    const cleanName = profileName.trim();
+    if (cleanName.length < 2 || cleanName.length > 40) {
+      setNotice({ kind: "error", text: "الاسم لازم يكون من حرفين إلى 40 حرف." });
+      return;
+    }
+    setProfileSaving(true);
+    try {
+      await updateProfile(auth.currentUser, { displayName: cleanName });
+      await saveUserProfile({ ...auth.currentUser, displayName: cleanName } as User);
+      setUser({ ...auth.currentUser, displayName: cleanName } as User);
+      setProfileEditOpen(false);
+      setNotice({ kind: "success", text: "تم تحديث اسم الملف الشخصي." });
+    } catch (error) {
+      setNotice({ kind: "error", text: friendlyError(error) });
+    } finally { setProfileSaving(false); }
   }
 
   async function logout() {
@@ -512,10 +535,12 @@ export default function App() {
 
       {tab === "profile" && <section className="page-content">
         <div className="profile-hero"><Avatar user={user} size="large" /><h1>{user.displayName || "عضو حكاوي"}</h1><p>{user.email || user.phoneNumber || "حساب حكاوي"}</p><span className="member-badge">عضو في حكاوي كوين</span></div>
-        <div className="settings-list"><button onClick={() => setNotice({ kind: "info", text: "إعدادات الملف الشخصي قيد الإضافة." })}>✎ <span>تعديل الملف الشخصي</span> <b>←</b></button><button onClick={() => setNotice({ kind: "info", text: "إعدادات الخصوصية والأمان قيد الإضافة." })}>◈ <span>الخصوصية والأمان</span> <b>←</b></button><button onClick={() => setNotice({ kind: "info", text: "سجل النشاط والمعاملات قيد الإضافة." })}>◷ <span>سجل النشاط</span> <b>←</b></button><button onClick={() => void logout()} className="logout-row">↪ <span>تسجيل الخروج</span> <b>←</b></button></div>
+        <div className="settings-list"><button onClick={() => { setProfileName(user.displayName || ""); setProfileEditOpen(true); }}>✎ <span>تعديل الملف الشخصي</span> <b>←</b></button><button onClick={() => setNotice({ kind: "info", text: "إعدادات الخصوصية والأمان قيد الإضافة." })}>◈ <span>الخصوصية والأمان</span> <b>←</b></button><button onClick={() => setNotice({ kind: "info", text: "سجل النشاط والمعاملات قيد الإضافة." })}>◷ <span>سجل النشاط</span> <b>←</b></button><button onClick={() => void logout()} className="logout-row">↪ <span>تسجيل الخروج</span> <b>←</b></button></div>
       </section>}
 
       <nav className="bottom-nav">{navigation.map((item) => <button key={item.id} className={tab === item.id ? "nav-active" : ""} onClick={() => setTab(item.id)}><span>{item.icon}</span><small>{item.label}</small></button>)}</nav>
+
+      {profileEditOpen && <div className="modal-backdrop" onClick={() => setProfileEditOpen(false)}><form className="modal-card" onSubmit={saveProfile} onClick={(e) => e.stopPropagation()}><div className="modal-heading"><div><span className="kicker">حسابك في حكاوي</span><h2>تعديل الملف الشخصي</h2></div><button type="button" onClick={() => setProfileEditOpen(false)}>×</button></div><label>الاسم الظاهر<input value={profileName} onChange={(e) => setProfileName(e.target.value)} minLength={2} maxLength={40} required placeholder="اكتب اسمك" /></label><p className="subtle">سيظهر الاسم الجديد في ملفك الشخصي عند تحديث بيانات الحساب.</p><button className="primary-button full" type="submit" disabled={profileSaving}>{profileSaving ? "جاري الحفظ..." : "حفظ التغييرات"}</button></form></div>}
 
       {createRoomOpen && <div className="modal-backdrop" onClick={() => setCreateRoomOpen(false)}><form className="modal-card" onSubmit={submitRoom} onClick={(e) => e.stopPropagation()}><div className="modal-heading"><div><span className="kicker">ابدأ اللمة</span><h2>إنشاء غرفة صوتية</h2></div><button type="button" onClick={() => setCreateRoomOpen(false)}>×</button></div><label>اسم الغرفة<input required minLength={3} maxLength={40} value={roomName} onChange={(e)=>setRoomName(e.target.value)} placeholder="مثلاً: سهرات حكاوي" /></label><label>وصف الغرفة<textarea value={roomDescription} maxLength={160} onChange={(e)=>setRoomDescription(e.target.value)} placeholder="قول للناس هيتكلموا عن إيه..." /></label><label>التصنيف<select value={roomCategory} onChange={(e)=>setRoomCategory(e.target.value)}><option>دردشة</option><option>تعرف على أصحاب</option><option>موسيقى</option><option>ألعاب</option><option>شعر وثقافة</option></select></label><button className="primary-button full" type="submit">إنشاء الغرفة</button></form></div>}
 
