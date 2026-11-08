@@ -271,12 +271,44 @@ export default function App() {
 
   if (selectedRoom) {
     return (
-      <main className="room-screen" dir="rtl" lang="ar">
-        <header className="subpage-header"><button className="round-button" onClick={() => setSelectedRoom(null)}>←</button><div><b>{selectedRoom.name}</b><small>{selectedRoom.category} · غرفة صوتية</small></div><span className="live-chip">غرفة عامة</span></header>
-        <section className="room-stage"><span className="kicker">أهلاً بيك في</span><h1>{selectedRoom.name}</h1><p>{selectedRoom.description || "لمة حلوة وأصحاب جداد."}</p><div className="room-owner"><Avatar user={user} /><span><b>{selectedRoom.ownerName}</b><small>صاحب الغرفة</small></span></div></section>
-        <section className="mic-panel"><div className="section-title"><div><span className="kicker">مجلس حكاوي</span><h2>مقاعد المايك</h2></div><span className="subtle">27 مقعد</span></div><div className="mic-grid">{Array.from({ length: 27 }, (_, index) => <div className={index === 0 ? "mic-seat occupied" : "mic-seat"} key={index}><span>{index === 0 ? "🎙️" : "＋"}</span><small>{index === 0 ? "أنت" : "متاح"}</small></div>)}</div></section>
-        <div className="room-warning">تم تسجيل دخولك للغرفة في قاعدة البيانات. الصوت المباشر ومقاعد المايك تحتاج ربط مزود RTC آمن قبل تشغيلها.</div>
-        <div className="room-controls"><button disabled className="primary-button">🎙️ المايك غير متاح حاليًا</button><button className="ghost-button" onClick={() => setSelectedRoom(null)}>مغادرة الغرفة</button></div>
+      <main className="room-screen v10-room-screen" dir="rtl" lang="ar">
+        <header className="subpage-header v10-room-header">
+          <button className="round-button" onClick={() => setSelectedRoom(null)} aria-label="العودة">→</button>
+          <div className="v10-room-heading"><b>{selectedRoom.name}</b><small>{selectedRoom.category} · غرفة صوتية</small></div>
+          <span className="live-chip">غرفة عامة</span>
+        </header>
+        <section className="room-stage v10-room-stage">
+          <span className="kicker">مجلس حكاوي الملكي</span>
+          <h1>{selectedRoom.name}</h1>
+          <p>{selectedRoom.description || "لمة حلوة وأصحاب جداد."}</p>
+          <div className="room-owner v10-room-owner"><Avatar user={user} /><span><b>{selectedRoom.ownerName}</b><small>صاحب الغرفة</small></span><span className="v10-owner-crown">♛</span></div>
+        </section>
+        <section className="mic-panel v10-mic-panel">
+          <div className="section-title">
+            <div><span className="kicker">مقاعد المشاركة</span><h2>مسرح المايكات الملكي</h2></div>
+            <span className="subtle">27 مقعد</span>
+          </div>
+          <p className="v10-mic-hint">اختار مقعداً للمشاركة عندما تتوفر خدمة الصوت المباشر.</p>
+          <div className="v10-mic-rows">
+            {[0, 1, 2].map((row) => (
+              <div className="v10-mic-row" key={row}>
+                {Array.from({ length: 9 }, (_, col) => {
+                  const seat = row * 9 + col;
+                  const isHost = seat === 0;
+                  return (
+                    <div className={isHost ? "v10-mic-seat v10-mic-host" : "v10-mic-seat"} key={seat}>
+                      <span>{isHost ? "♛" : "＋"}</span>
+                      <small>{isHost ? "المالك" : seat + 1}</small>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+          <div className="v10-seat-legend"><span><i className="seat-dot occupied-dot" /> مقعد المالك</span><span><i className="seat-dot free-dot" /> مقعد متاح</span></div>
+        </section>
+        <div className="room-warning v10-room-warning">تم تسجيل دخولك للغرفة. الصوت المباشر وفتح المايك يحتاجان ربط مزود RTC آمن؛ لذلك المايك غير مفعّل حالياً.</div>
+        <div className="room-controls v10-room-controls"><button disabled className="primary-button">🎙️ الصوت غير متاح حالياً</button><button className="ghost-button" onClick={() => setSelectedRoom(null)}>مغادرة الغرفة</button></div>
         {notice && <div className={`toast toast-${notice.kind}`} role="status">{notice.text}<button onClick={() => setNotice(null)}>×</button></div>}
       </main>
     );
