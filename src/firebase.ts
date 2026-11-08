@@ -1,11 +1,11 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { getAuth, type User } from "firebase/auth";
 import {
-  addDoc, collection, doc, getDoc, getFirestore, limit, onSnapshot,
-  orderBy, query, runTransaction, serverTimestamp, setDoc, where,
+  addDoc, collection, deleteDoc, doc, getDoc, getDocs, getFirestore, limit, onSnapshot,
+  orderBy, query, runTransaction, serverTimestamp, setDoc, startAfter, updateDoc, where,
   type Unsubscribe,
 } from "firebase/firestore";
-import { getDownloadURL, getStorage, ref, uploadBytes } from "firebase/storage";
+import { deleteObject, getDownloadURL, getStorage, ref, uploadBytes } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -119,6 +119,7 @@ export interface MomentRecord {
   mediaType: "image" | "video" | null;
   likesCount: number;
   createdAt?: unknown;
+  updatedAt?: unknown;
 }
 export interface MomentComment {
   id: string;
@@ -137,6 +138,36 @@ export function subscribeMoments(
     (snapshot) => onMoments(snapshot.docs.map((item) => ({ id: item.id, ...item.data() } as MomentRecord))),
     onError,
   );
+}
+export async function loadMoreMoments(lastMoment: MomentRecord, pageSize = 20): Promise<MomentRecord[]> {
+  if (!db) throw new Error("Firebase غير مُعدّ بعد.");
+  const lastDoc = await getDoc(doc(db, "moments", lastMoment.id));
+  if (!lastDoc.exists()) return [];
+  const snapshot = await getDocs(query(
+    collection(db, "moments"), orderBy("createdAt", "desc"), startAfter(lastDoc), limit(pageSize),
+  ));
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() } as MomentRecord));
+}
+export async function updateMomentText(momentId: string, text: string): Promise<void> {
+  if (!db) throw new Error("قاعدة البيانات غير متاحة.");
+  const clean = text.trim();
+  if (!clean || clean.length > 5000) throw new Error("اكتب نصًا لا يزيد عن 5000 حرف.");
+  await updateDoc(doc(db, "moments", momentId), { text: clean, updatedAt: serverTimestamp() });
+}
+export async function deleteMoment(moment: MomentRecord, uid: string): Promise<void> {
+  if (!db) throw new Error("قاعدة البيانات غير متاحة.");
+  if (moment.authorUid !== uid) throw new Error("تقدر تحذف منشوراتك أنت بس.");
+  await deleteDoc(doc(db, "moments", moment.id));
+  if (moment.mediaUrl && storage) {
+    try { await deleteObject(ref(storage, moment.mediaUrl)); }
+    catch (error) { console.warn("Moment media cleanup failed", error); }
+  }
+}
+export async function reportMoment(momentId: string, user: User, reason = "محتوى غير مناسب"): Promise<void> {
+  if (!db) throw new Error("قاعدة البيانات غير متاحة.");
+  await addDoc(collection(db, "moments", momentId, "reports"), {
+    reporterUid: user.uid, reason, status: "open", createdAt: serverTimestamp(),
+  });
 }
 export async function createMoment(input: { user: User; text: string; file?: File | null }): Promise<void> {
   if (!db || !storage) throw new Error("خدمة التخزين غير مُعدّة.");
