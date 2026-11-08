@@ -1,0 +1,6 @@
+{
+  "name": "حكاوي كوين",
+  "description": "تطبيق حكاوي كوين – غرف صوتية بـ 27 مقعد، بث مباشر، لحظات اجتماعية، ألعاب ومراسلة بهوية ملكية بالأسود والذهب.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
