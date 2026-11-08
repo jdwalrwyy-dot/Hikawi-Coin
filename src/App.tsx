@@ -109,7 +109,12 @@ export default function App() {
   useEffect(() => {
     if (!user || !db) { setRooms([]); setMoments([]); return; }
     const stopRooms = subscribePublicRooms(setRooms, (error) => setNotice({ kind: "error", text: friendlyError(error) }));
-    const stopMoments = subscribeMoments(setMoments, (error) => setNotice({ kind: "error", text: friendlyError(error) }));
+    const stopMoments = subscribeMoments((incoming) => {
+      setMoments((current) => {
+        const incomingIds = new Set(incoming.map((item) => item.id));
+        return [...incoming, ...current.filter((item) => !incomingIds.has(item.id))];
+      });
+    }, (error) => setNotice({ kind: "error", text: friendlyError(error) }));
     return () => { stopRooms(); stopMoments(); };
   }, [user]);
 
@@ -271,6 +276,7 @@ export default function App() {
     setMomentBusy(true);
     try {
       await deleteMoment(moment, user.uid);
+      setMoments((current) => current.filter((item) => item.id !== moment.id));
       setNotice({ kind: "success", text: "تم حذف المنشور." });
     } catch (error) { setNotice({ kind: "error", text: friendlyError(error) }); }
     finally { setMomentBusy(false); }
