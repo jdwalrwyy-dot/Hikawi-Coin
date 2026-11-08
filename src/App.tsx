@@ -8,7 +8,8 @@ import type { LiveRoomRecord, MomentComment, MomentRecord } from "./firebase";
 import {
   auth, db, isFirebaseConfigured, saveUserProfile, subscribePublicRooms,
   createLiveRoom, joinLiveRoom, subscribeMoments, createMoment, toggleMomentLike,
-  hasLikedMoment, subscribeMomentComments, addMomentComment,
+  hasLikedMoment, subscribeMomentComments, addMomentComment, loadMoreMoments,
+  updateMomentText, deleteMoment, reportMoment,
 } from "./firebase";
 
 type Tab = "home" | "live" | "moments" | "games" | "messages" | "profile";
@@ -83,6 +84,11 @@ export default function App() {
   const [commentMoment, setCommentMoment] = useState<MomentRecord | null>(null);
   const [comments, setComments] = useState<MomentComment[]>([]);
   const [commentText, setCommentText] = useState("");
+  const [editingMoment, setEditingMoment] = useState<MomentRecord | null>(null);
+  const [editingText, setEditingText] = useState("");
+  const [momentBusy, setMomentBusy] = useState(false);
+  const [loadingMoreMoments, setLoadingMoreMoments] = useState(false);
+  const [hasMoreMoments, setHasMoreMoments] = useState(true);
   const [gameIndex, setGameIndex] = useState(0);
   const [gameScore, setGameScore] = useState(0);
   const [answered, setAnswered] = useState<number | null>(null);
@@ -196,6 +202,20 @@ export default function App() {
     const shareText = moment.text?.trim() || (moment.mediaType === "video" ? "شاهد الفيديو من لحظات حكاوي" : "شاهد هذه اللحظة من حكاوي");
     try {
       if (navigator.share) {
+        if (moment.mediaUrl && navigator.canShare) {
+          try {
+            const response = await fetch(moment.mediaUrl);
+            const blob = await response.blob();
+            const extension = moment.mediaType === "video" ? "mp4" : "jpg";
+            const file = new File([blob], `hikawi-moment-${moment.id}.${extension}`, { type: blob.type || (moment.mediaType === "video" ? "video/mp4" : "image/jpeg") });
+            if (navigator.canShare({ files: [file] })) {
+              await navigator.share({ files: [file], title: moment.mediaType === "video" ? "فيديو من حكاوي" : "صورة من حكاوي", text: shareText });
+              return;
+            }
+          } catch (error) {
+            if (error instanceof Error && error.name === "AbortError") return;
+          }
+        }
         await navigator.share({
           title: moment.mediaType === "video" ? "فيديو من حكاوي" : "لحظة من حكاوي",
           text: shareText,
@@ -218,6 +238,55 @@ export default function App() {
       if (error instanceof Error && error.name === "AbortError") return;
       setNotice({ kind: "error", text: "مقدرناش نشارك اللحظة. حاول تاني." });
     }
+  }
+
+  async function loadOlderMoments() {
+    if (loadingMoreMoments || !hasMoreMoments || moments.length === 0) return;
+    setLoadingMoreMoments(true);
+    try {
+      const older = await loadMoreMoments(moments[moments.length - 1], 20);
+      setMoments((current) => {
+        const known = new Set(current.map((item) => item.id));
+        return [...current, ...older.filter((item) => !known.has(item.id))];
+      });
+      if (older.length < 20) setHasMoreMoments(false);
+    } catch (error) { setNotice({ kind: "error", text: friendlyError(error) }); }
+    finally { setLoadingMoreMoments(false); }
+  }
+
+  async function saveMomentEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!user || !editingMoment) return;
+    setMomentBusy(true);
+    try {
+      await updateMomentText(editingMoment.id, editingText);
+      setEditingMoment(null); setEditingText("");
+      setNotice({ kind: "success", text: "تم تعديل المنشور." });
+    } catch (error) { setNotice({ kind: "error", text: friendlyError(error) }); }
+    finally { setMomentBusy(false); }
+  }
+
+  async function removeMoment(moment: MomentRecord) {
+    if (!user || !window.confirm("متأكد إنك عايز تحذف المنشور؟")) return;
+    setMomentBusy(true);
+    try {
+      await deleteMoment(moment, user.uid);
+      setNotice({ kind: "success", text: "تم حذف المنشور." });
+    } catch (error) { setNotice({ kind: "error", text: friendlyError(error) }); }
+    finally { setMomentBusy(false); }
+  }
+
+  async function flagMoment(moment: MomentRecord) {
+    if (!user || !window.confirm("تأكيد الإبلاغ عن المنشور لمراجعته؟")) return;
+    try {
+      await reportMoment(moment.id, user);
+      setNotice({ kind: "success", text: "وصل بلاغك، شكرًا لمساعدتنا في الحفاظ على المجتمع." });
+    } catch (error) { setNotice({ kind: "error", text: friendlyError(error) }); }
+  }
+
+  function formatMomentDate(value: unknown): string {
+    if (!value || typeof value !== "object" || !("toDate" in value) || typeof (value as {toDate?: unknown}).toDate !== "function") return "منشور حديثًا";
+    return new Intl.DateTimeFormat("ar-EG", { dateStyle: "medium", timeStyle: "short" }).format((value as {toDate: () => Date}).toDate());
   }
 
   async function likeMoment(moment: MomentRecord) {
@@ -409,12 +478,19 @@ export default function App() {
         <div className="v10-moments-feed-heading"><div><span className="kicker">من مجتمعنا</span><h2>أحدث اللحظات</h2></div><span className="v10-feed-symbol">✧</span></div>
         {moments.length === 0 ? <div className="empty-card v10-moments-empty"><div className="empty-icon">✦</div><h3>لسه مفيش لحظات</h3><p>كن أول واحد يشارك حكاية مع مجتمع حكاوي.</p></div> :
           <div className="moments-feed v10-moments-feed">{moments.map((moment) => <article className="moment-card v10-moment-card" key={moment.id}>
-            <div className="moment-author v10-moment-author"><div className="avatar">{moment.authorPhotoURL ? <img src={moment.authorPhotoURL} alt="" /> : <span>{moment.authorName.slice(0,1)}</span>}</div><div><b>{moment.authorName}</b><small>من مجتمع حكاوي · منشور عام</small></div><button className="more-button" aria-label="المزيد عن المنشور" onClick={() => setNotice({ kind: "info", text: "إدارة المنشور والإبلاغ هتتوفر في أدوات المجتمع." })}>•••</button></div>
+            <div className="moment-author v10-moment-author"><div className="avatar">{moment.authorPhotoURL ? <img src={moment.authorPhotoURL} alt="" /> : <span>{moment.authorName.slice(0,1)}</span>}</div><div><b>{moment.authorName}</b><small>{formatMomentDate(moment.createdAt)}{moment.updatedAt ? " · تم التعديل" : ""}</small></div><button className="more-button" aria-label="خيارات المنشور" onClick={() => {
+              if (moment.authorUid === user.uid) {
+                const choice = window.prompt("اكتب 1 لتعديل المنشور أو 2 لحذفه أو إلغاء:");
+                if (choice === "1") { setEditingMoment(moment); setEditingText(moment.text); }
+                else if (choice === "2") void removeMoment(moment);
+              } else void flagMoment(moment);
+            }}>•••</button></div>
             {moment.text && <p className="moment-text v10-moment-text">{moment.text}</p>}
             {moment.mediaUrl && (moment.mediaType === "video" ? <video className="moment-media v10-moment-media" src={moment.mediaUrl} controls playsInline preload="metadata" /> : <img className="moment-media v10-moment-media" src={moment.mediaUrl} alt="مرفق من لحظات حكاوي" loading="lazy" />)}
             <div className="moment-counts v10-moment-counts"><span>♥ {moment.likesCount || 0} إعجاب</span><button onClick={() => setCommentMoment(moment)}>التعليقات</button></div>
             <div className="moment-actions v10-moment-actions"><button className={likedIds.includes(moment.id) ? "liked" : ""} onClick={() => void likeMoment(moment)}>♡ إعجاب</button><button onClick={() => setCommentMoment(moment)}>◯ تعليق</button><button onClick={() => void shareMoment(moment)}>↗ مشاركة</button></div>
           </article>)}</div>}
+        {moments.length > 0 && hasMoreMoments && <button className="ghost-button v10-load-more" type="button" onClick={() => void loadOlderMoments()} disabled={loadingMoreMoments}>{loadingMoreMoments ? "جاري تحميل المزيد..." : "تحميل لحظات أقدم"}</button>}
       </section>}
 
       {tab === "games" && <section className="page-content">
@@ -437,6 +513,7 @@ export default function App() {
 
       {createRoomOpen && <div className="modal-backdrop" onClick={() => setCreateRoomOpen(false)}><form className="modal-card" onSubmit={submitRoom} onClick={(e) => e.stopPropagation()}><div className="modal-heading"><div><span className="kicker">ابدأ اللمة</span><h2>إنشاء غرفة صوتية</h2></div><button type="button" onClick={() => setCreateRoomOpen(false)}>×</button></div><label>اسم الغرفة<input required minLength={3} maxLength={40} value={roomName} onChange={(e)=>setRoomName(e.target.value)} placeholder="مثلاً: سهرات حكاوي" /></label><label>وصف الغرفة<textarea value={roomDescription} maxLength={160} onChange={(e)=>setRoomDescription(e.target.value)} placeholder="قول للناس هيتكلموا عن إيه..." /></label><label>التصنيف<select value={roomCategory} onChange={(e)=>setRoomCategory(e.target.value)}><option>دردشة</option><option>تعرف على أصحاب</option><option>موسيقى</option><option>ألعاب</option><option>شعر وثقافة</option></select></label><button className="primary-button full" type="submit">إنشاء الغرفة</button></form></div>}
 
+      {editingMoment && <div className="modal-backdrop" onClick={() => setEditingMoment(null)}><form className="modal-card" onSubmit={saveMomentEdit} onClick={(e)=>e.stopPropagation()}><div className="modal-heading"><div><span className="kicker">إدارة منشورك</span><h2>تعديل اللحظة</h2></div><button type="button" onClick={()=>setEditingMoment(null)}>×</button></div><textarea value={editingText} onChange={(e)=>setEditingText(e.target.value)} maxLength={5000} rows={5} /><button className="primary-button full" type="submit" disabled={momentBusy || !editingText.trim()}>{momentBusy ? "جاري الحفظ..." : "حفظ التعديل"}</button></form></div>}
       {commentMoment && <div className="modal-backdrop" onClick={() => setCommentMoment(null)}><section className="modal-card comments-modal" onClick={(e)=>e.stopPropagation()}><div className="modal-heading"><div><span className="kicker">نقاش المجتمع</span><h2>التعليقات</h2></div><button onClick={()=>setCommentMoment(null)}>×</button></div><div className="comments-list">{comments.length===0?<p className="subtle">لسه مفيش تعليقات. ابدأ الحوار.</p>:comments.map((comment)=><div className="comment-row" key={comment.id}><b>{comment.authorName}</b><p>{comment.text}</p></div>)}</div><form className="comment-form" onSubmit={submitComment}><input value={commentText} onChange={(e)=>setCommentText(e.target.value)} placeholder="اكتب تعليقك..." maxLength={1000} /><button className="primary-button" type="submit" disabled={!commentText.trim()}>إرسال</button></form></section></div>}
 
       {notice && <div className={`toast toast-${notice.kind}`} role="status">{notice.text}<button onClick={() => setNotice(null)}>×</button></div>}
