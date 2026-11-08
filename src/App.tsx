@@ -191,6 +191,35 @@ export default function App() {
     finally { setPosting(false); }
   }
 
+  async function shareMoment(moment: MomentRecord) {
+    const shareUrl = moment.mediaUrl || "";
+    const shareText = moment.text?.trim() || (moment.mediaType === "video" ? "شاهد الفيديو من لحظات حكاوي" : "شاهد هذه اللحظة من حكاوي");
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: moment.mediaType === "video" ? "فيديو من حكاوي" : "لحظة من حكاوي",
+          text: shareText,
+          ...(shareUrl ? { url: shareUrl } : {}),
+        });
+        return;
+      }
+      if (shareUrl && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+        setNotice({ kind: "success", text: moment.mediaType === "video" ? "اتنسخ رابط الفيديو نفسه." : "اتنسخ رابط الصورة نفسها." });
+        return;
+      }
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareText);
+        setNotice({ kind: "success", text: "اتنسخ نص اللحظة." });
+        return;
+      }
+      setNotice({ kind: "info", text: "المشاركة غير مدعومة على المتصفح ده." });
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return;
+      setNotice({ kind: "error", text: "مقدرناش نشارك اللحظة. حاول تاني." });
+    }
+  }
+
   async function likeMoment(moment: MomentRecord) {
     if (!user) return;
     try {
@@ -384,7 +413,7 @@ export default function App() {
             {moment.text && <p className="moment-text v10-moment-text">{moment.text}</p>}
             {moment.mediaUrl && (moment.mediaType === "video" ? <video className="moment-media v10-moment-media" src={moment.mediaUrl} controls playsInline preload="metadata" /> : <img className="moment-media v10-moment-media" src={moment.mediaUrl} alt="مرفق من لحظات حكاوي" loading="lazy" />)}
             <div className="moment-counts v10-moment-counts"><span>♥ {moment.likesCount || 0} إعجاب</span><button onClick={() => setCommentMoment(moment)}>التعليقات</button></div>
-            <div className="moment-actions v10-moment-actions"><button className={likedIds.includes(moment.id) ? "liked" : ""} onClick={() => void likeMoment(moment)}>♡ إعجاب</button><button onClick={() => setCommentMoment(moment)}>◯ تعليق</button><button onClick={() => { void navigator.clipboard?.writeText(location.href).then(() => setNotice({kind:"success",text:"اتنسخ رابط الموقع."})).catch(() => setNotice({kind:"info",text:"انسخ رابط الصفحة من شريط المتصفح."})); }}>↗ مشاركة</button></div>
+            <div className="moment-actions v10-moment-actions"><button className={likedIds.includes(moment.id) ? "liked" : ""} onClick={() => void likeMoment(moment)}>♡ إعجاب</button><button onClick={() => setCommentMoment(moment)}>◯ تعليق</button><button onClick={() => void shareMoment(moment)}>↗ مشاركة</button></div>
           </article>)}</div>}
       </section>}
 
