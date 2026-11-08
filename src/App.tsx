@@ -9,7 +9,7 @@ import {
   auth, db, isFirebaseConfigured, saveUserProfile, subscribePublicRooms,
   createLiveRoom, joinLiveRoom, subscribeMoments, createMoment, toggleMomentLike,
   hasLikedMoment, subscribeMomentComments, addMomentComment, loadMoreMoments,
-  updateMomentText, deleteMoment, reportMoment, subscribeFriends, ensureFriendConversation, subscribeChatMessages, sendChatMessage,
+  updateMomentText, deleteMoment, reportMoment, subscribeFriends, ensureFriendConversation, subscribeChatMessages, sendChatMessage, syncContactsFromPhone,
 } from "./firebase";
 
 type Tab = "home" | "live" | "moments" | "games" | "messages" | "profile";
@@ -101,6 +101,7 @@ export default function App() {
   const [chatDraft, setChatDraft] = useState("");
   const [chatSending, setChatSending] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
+  const [contactSyncing, setContactSyncing] = useState(false);
   const filteredRooms = roomFilter === "الكل" ? rooms : rooms.filter((room) => room.category === roomFilter);
 
   useEffect(() => {
@@ -153,6 +154,36 @@ export default function App() {
     try { await sendChatMessage(selectedFriend.pairId, user.uid, chatDraft); setChatDraft(""); }
     catch (error) { setNotice({ kind: "error", text: friendlyError(error) }); }
     finally { setChatSending(false); }
+  }
+
+  async function discoverContacts() {
+    type PickedContact = { tel?: string[] };
+    type ContactPicker = { select: (properties: string[], options?: { multiple?: boolean }) => Promise<PickedContact[]> };
+    const picker = (navigator as Navigator & { contacts?: ContactPicker }).contacts;
+    if (!picker) {
+      setNotice({ kind: "info", text: "اختيار جهات الاتصال غير مدعوم في المتصفح الحالي. افتح التطبيق من Chrome على Android أو استخدم جهازًا يدعم Contact Picker." });
+      return;
+    }
+    setContactSyncing(true);
+    try {
+      const picked = await picker.select(["tel"], { multiple: true });
+      const numbers = [...new Set(picked.flatMap((contact) => contact.tel || [])
+        .map((value) => phoneToE164(value))
+        .filter((value) => /^\\+[1-9]\\d{7,14}$/.test(value)))].slice(0, 250);
+      if (numbers.length === 0) {
+        setNotice({ kind: "info", text: "ما اخترتش أرقامًا صالحة للمزامنة." });
+        return;
+      }
+      const matchedCount = await syncContactsFromPhone(numbers);
+      setNotice({ kind: "success", text: matchedCount > 0
+        ? `تم العثور على ${matchedCount} صديقًا متبادلًا. هتظهر الأسماء في قائمة الرسائل.`
+        : "تمت المزامنة، لكن لم نعثر حتى الآن على أصدقاء متبادلين مسجلين في حكاوي كوين." });
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return;
+      setNotice({ kind: "error", text: friendlyError(error) });
+    } finally {
+      setContactSyncing(false);
+    }
   }
 
   useEffect(() => {
@@ -565,6 +596,11 @@ export default function App() {
       {tab === "messages" && <section className="page-content">
         <div className="page-heading"><span className="kicker">قريبين دايمًا</span><h1>الرسائل</h1><p>اختار صديق من قائمة أصدقائك لبدء محادثة خاصة.</p></div>
         {!selectedFriend ? <div className="friends-list">
+          <div className="contact-sync-card">
+            <div><b>اكتشاف الأصدقاء من جهات الاتصال</b><p>اختار جهات الاتصال اللي تسمح بمزامنتها. هنضيف الصديق تلقائيًا فقط لو رقمك موجود عنده ورقمه موجود عندك، وكان حساباهما موثقين بالهاتف.</p></div>
+            <button className="primary-button" type="button" onClick={() => void discoverContacts()} disabled={contactSyncing}>{contactSyncing ? "جاري التحقق..." : "اختيار جهات الاتصال"}</button>
+            <small>الأرقام تُستخدم للتحقق الآمن ولا تُعرض للمستخدمين الآخرين. اختيار جهات الاتصال يتم بموافقتك.</small>
+          </div>
           {friends.length === 0 ? <div className="messages-empty"><div className="chat-bubbles">💬</div><h2>لسه مفيش أصدقاء ظاهرين</h2><p>هنا هتظهر الحسابات المرتبطة بسجلات الصداقة المقبولة في Firebase. طلبات الصداقة الجديدة وإدارتها مش مضافة في الشاشة دي لسه.</p></div> :
             friends.map((friend) => <button className="friend-row" key={friend.pairId} onClick={() => setSelectedFriend(friend)}><div className="friend-avatar">{friend.photoURL ? <img src={friend.photoURL} alt="" /> : <span>{friend.displayName.slice(0,1)}</span>}</div><span className="friend-meta"><b>{friend.displayName}</b><small>صديق في حكاوي كوين</small></span><b className="friend-arrow">←</b></button>)}
         </div> : <div className="chat-panel">
