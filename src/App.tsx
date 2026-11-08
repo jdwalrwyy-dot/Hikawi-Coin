@@ -4,6 +4,7 @@ import {
   signInWithPhoneNumber, signInWithPopup, signOut,
   type ConfirmationResult, type User,
 } from "firebase/auth";
+import V10HomeScreen from "./components/V10HomeScreen";
 import type { LiveRoomRecord, MomentComment, MomentRecord } from "./firebase";
 import {
   auth, db, isFirebaseConfigured, saveUserProfile, subscribePublicRooms,
@@ -289,16 +290,7 @@ export default function App() {
         <div className="header-actions"><button className="header-icon" onClick={() => setNotice({ kind: "info", text: "كل إشعاراتك هتظهر هنا بعد تفعيل خدمة الإشعارات." })} aria-label="الإشعارات">♧</button><Avatar user={user} /></div>
       </header>
 
-      {tab === "home" && <section className="page-content">
-        <div className="welcome-strip"><div><span className="kicker">مساء الخير</span><h1>{user.displayName || "صاحب حكاوي"} 👋</h1><p>مستنيين حكايتك النهارده.</p></div><div className="welcome-symbol">✦</div></div>
-        <section className="section-block">
-          <div className="section-title"><div><span className="kicker">اتكلم واتعرف</span><h2>الغرف الصوتية</h2></div><button className="outline-small" onClick={() => setCreateRoomOpen(true)}>＋ غرفة جديدة</button></div>
-          <div className="room-categories">{["الكل","دردشة","تعرف على أصحاب","موسيقى","ألعاب"].map((x) => <button key={x} onClick={() => setRoomFilter(x)} className={roomFilter === x ? "category-active" : ""}>{x}</button>)}</div>
-          {filteredRooms.length === 0 ? <div className="empty-card"><div className="empty-icon">🎙️</div><h3>{rooms.length === 0 ? "لسه مفيش غرف عامة" : "مفيش غرف في التصنيف ده"}</h3><p>{rooms.length === 0 ? "ابدأ اللمة واعمل أول غرفة صوتية في حكاوي." : "اختار تصنيف تاني أو ارجع لعرض كل الغرف."}</p>{rooms.length === 0 && <button className="primary-button" onClick={() => setCreateRoomOpen(true)}>إنشاء أول غرفة</button>}</div> :
-            <div className="rooms-grid">{filteredRooms.map((room, index) => <article className="room-tile" key={room.id}><div className={`room-cover cover-${index % 4}`}><span>{["🎙️","🌙","🎮","☕"][index % 4]}</span><small>غرفة عامة</small></div><div className="room-tile-body"><b>{room.name}</b><p>{room.description || room.category || "غرفة حكاوي"}</p><div><span>👤 {room.ownerName}</span><button onClick={() => void enterRoom(room)}>دخول الغرفة</button></div></div></article>)}</div>}
-        </section>
-        <section className="promo-card"><div><span className="kicker">حكاوي تجمعنا</span><h2>صوتك مسموع هنا</h2><p>شارك أصحابك لحظاتك وافتح مساحة جديدة للكلام.</p></div><div className="promo-emoji">💬</div></section>
-      </section>}
+      {tab === "home" && <V10HomeScreen rooms={filteredRooms} displayName={user.displayName || "صاحب حكاوي"} onCreateRoom={() => setCreateRoomOpen(true)} onEnterRoom={(room) => void enterRoom(room)} />}
 
       {tab === "live" && <section className="page-content">
         <div className="page-heading"><span className="kicker">شاهد وشارك</span><h1>البث المباشر</h1><p>تابع صناع المحتوى وشارك في البثوث الحية.</p></div>
