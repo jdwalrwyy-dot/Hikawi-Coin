@@ -6,6 +6,7 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 import { deleteObject, getDownloadURL, getStorage, ref, uploadBytes } from "firebase/storage";
+import { getFunctions, httpsCallable } from "firebase/functions";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -26,6 +27,7 @@ if (isFirebaseConfigured) {
 export const auth = firebaseApp ? getAuth(firebaseApp) : null;
 export const db = firebaseApp ? getFirestore(firebaseApp) : null;
 export const storage = firebaseApp ? getStorage(firebaseApp) : null;
+const functions = firebaseApp ? getFunctions(firebaseApp, "us-central1") : null;
 
 export async function saveUserProfile(user: User): Promise<void> {
   if (!db) throw new Error("Firebase غير مُعدّ بعد.");
@@ -258,7 +260,9 @@ export function subscribeFriends(uid: string, onFriends: (friends: FriendRecord[
       if (typeof friendUid !== "string") return [];
       // User profile reads are intentionally restricted by current Firestore rules.
       // Keep this list privacy-safe until profile visibility is explicitly authorized.
-      return [{ pairId: friendship.id, uid: friendUid, displayName: "صديق", photoURL: null }];
+      const profiles = friendship.data().profiles as Record<string, { displayName?: string; photoURL?: string | null }> | undefined;
+      const profile = profiles?.[friendUid];
+      return [{ pairId: friendship.id, uid: friendUid, displayName: profile?.displayName || "صديق", photoURL: profile?.photoURL || null }];
     });
     onFriends(friends);
   }, onError);
@@ -291,4 +295,15 @@ export async function sendChatMessage(pairId: string, uid: string, text: string)
   }
   await addDoc(collection(conversationRef, "messages"), { senderUid: uid, text: clean, createdAt: serverTimestamp() });
   await updateDoc(conversationRef, { lastMessageAt: serverTimestamp(), lastMessagePreview: clean.slice(0, 120) });
+}
+
+
+/** Sends selected phone numbers to a callable server function.
+ * Raw contacts are never written to Firestore; the server stores keyed hashes only.
+ */
+export async function syncContactsFromPhone(phoneNumbers: string[]): Promise<number> {
+  if (!functions) throw new Error("خدمة Firebase Functions غير مُعدّة.");
+  const sync = httpsCallable<{ phoneNumbers: string[] }, { matchedCount: number }>(functions, "syncContacts");
+  const result = await sync({ phoneNumbers });
+  return result.data.matchedCount;
 }
