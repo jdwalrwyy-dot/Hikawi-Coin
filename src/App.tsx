@@ -369,21 +369,22 @@ export default function App() {
         <div className="v10-live-note">ملاحظة: العناصر دي بتوضح المزايا المستهدفة للتصميم، ومش مفعّلة قبل ربط واختبار خدمة البث الحقيقية.</div>
       </section>}
 
-      {tab === "moments" && <section className="page-content">
-        <div className="page-heading"><span className="kicker">شارك يومك</span><h1>اللحظات</h1><p>منشورات وصور وفيديوهات من مجتمع حكاوي.</p></div>
-        <form className="composer-card" onSubmit={publishMoment}>
-          <div className="composer-head"><Avatar user={user} /><div><b>{user.displayName || "عضو حكاوي"}</b><small>مشاركة عامة</small></div></div>
-          <textarea value={momentText} onChange={(e) => setMomentText(e.target.value)} placeholder="بتفكر في إيه؟ احكيلنا..." rows={3} maxLength={5000} />
-          {momentFile && <div className="file-chip">📎 {momentFile.name}<button type="button" onClick={() => setMomentFile(null)}>×</button></div>}
-          <div className="composer-actions"><label className="file-pick" htmlFor="moment-file">▧ صورة أو فيديو</label><input id="moment-file" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime" onChange={(e) => setMomentFile(e.target.files?.[0] || null)} /><button className="primary-button" type="submit" disabled={posting || (!momentText.trim() && !momentFile)}>{posting ? "جاري النشر..." : "نشر اللحظة"}</button></div>
+      {tab === "moments" && <section className="page-content v10-moments-page">
+        <div className="page-heading v10-moments-heading"><span className="kicker">حكاياتنا بتجمعنا</span><h1>اللحظات</h1><p>شارك صورة أو فيديو أو كلمة تفضل فاكرة.</p></div>
+        <form className="composer-card v10-moment-composer" onSubmit={publishMoment}>
+          <div className="composer-head v10-composer-head"><Avatar user={user} /><div><b>{user.displayName || "عضو حكاوي"}</b><small>مشاركة عامة · مجتمع حكاوي</small></div><span className="v10-composer-mark">✦</span></div>
+          <textarea value={momentText} onChange={(e) => setMomentText(e.target.value)} placeholder="إيه الحكاية اللي حابب تشاركها النهارده؟" rows={3} maxLength={5000} aria-label="نص اللحظة" />
+          {momentFile && <div className="file-chip">📎 {momentFile.name}<button type="button" onClick={() => setMomentFile(null)} aria-label="إزالة الملف">×</button></div>}
+          <div className="v10-composer-footer"><label className="file-pick v10-file-pick" htmlFor="moment-file"><span>▧</span> صورة أو فيديو</label><input id="moment-file" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime" onChange={(e) => setMomentFile(e.target.files?.[0] || null)} /><span className="v10-char-count">{momentText.length}/5000</span><button className="primary-button v10-publish-button" type="submit" disabled={posting || (!momentText.trim() && !momentFile)}>{posting ? "جاري النشر..." : "نشر اللحظة　↗"}</button></div>
         </form>
-        {moments.length === 0 ? <div className="empty-card"><div className="empty-icon">✦</div><h3>ابدأ أول لحظة</h3><p>اكتب منشور أو شارك صورة وفيديو يظهروا للمجتمع.</p></div> :
-          <div className="moments-feed">{moments.map((moment) => <article className="moment-card" key={moment.id}>
-            <div className="moment-author"><div className="avatar">{moment.authorPhotoURL ? <img src={moment.authorPhotoURL} alt="" /> : <span>{moment.authorName.slice(0,1)}</span>}</div><div><b>{moment.authorName}</b><small>من مجتمع حكاوي · منشور عام</small></div><button className="more-button" onClick={() => setNotice({ kind: "info", text: "إدارة المنشور والإبلاغ هتتوفر في أدوات المجتمع." })}>•••</button></div>
-            {moment.text && <p className="moment-text">{moment.text}</p>}
-            {moment.mediaUrl && (moment.mediaType === "video" ? <video className="moment-media" src={moment.mediaUrl} controls playsInline preload="metadata" /> : <img className="moment-media" src={moment.mediaUrl} alt="مرفق من لحظات حكاوي" loading="lazy" />)}
-            <div className="moment-counts"><span>♥ {moment.likesCount || 0} إعجاب</span><button onClick={() => setCommentMoment(moment)}>التعليقات</button></div>
-            <div className="moment-actions"><button className={likedIds.includes(moment.id) ? "liked" : ""} onClick={() => void likeMoment(moment)}>♡ إعجاب</button><button onClick={() => setCommentMoment(moment)}>◯ تعليق</button><button onClick={() => { void navigator.clipboard?.writeText(location.href).then(() => setNotice({kind:"success",text:"اتنسخ رابط الموقع."})).catch(() => setNotice({kind:"info",text:"انسخ رابط الصفحة من شريط المتصفح."})); }}>↗ مشاركة</button></div>
+        <div className="v10-moments-feed-heading"><div><span className="kicker">من مجتمعنا</span><h2>أحدث اللحظات</h2></div><span className="v10-feed-symbol">✧</span></div>
+        {moments.length === 0 ? <div className="empty-card v10-moments-empty"><div className="empty-icon">✦</div><h3>لسه مفيش لحظات</h3><p>كن أول واحد يشارك حكاية مع مجتمع حكاوي.</p></div> :
+          <div className="moments-feed v10-moments-feed">{moments.map((moment) => <article className="moment-card v10-moment-card" key={moment.id}>
+            <div className="moment-author v10-moment-author"><div className="avatar">{moment.authorPhotoURL ? <img src={moment.authorPhotoURL} alt="" /> : <span>{moment.authorName.slice(0,1)}</span>}</div><div><b>{moment.authorName}</b><small>من مجتمع حكاوي · منشور عام</small></div><button className="more-button" aria-label="المزيد عن المنشور" onClick={() => setNotice({ kind: "info", text: "إدارة المنشور والإبلاغ هتتوفر في أدوات المجتمع." })}>•••</button></div>
+            {moment.text && <p className="moment-text v10-moment-text">{moment.text}</p>}
+            {moment.mediaUrl && (moment.mediaType === "video" ? <video className="moment-media v10-moment-media" src={moment.mediaUrl} controls playsInline preload="metadata" /> : <img className="moment-media v10-moment-media" src={moment.mediaUrl} alt="مرفق من لحظات حكاوي" loading="lazy" />)}
+            <div className="moment-counts v10-moment-counts"><span>♥ {moment.likesCount || 0} إعجاب</span><button onClick={() => setCommentMoment(moment)}>التعليقات</button></div>
+            <div className="moment-actions v10-moment-actions"><button className={likedIds.includes(moment.id) ? "liked" : ""} onClick={() => void likeMoment(moment)}>♡ إعجاب</button><button onClick={() => setCommentMoment(moment)}>◯ تعليق</button><button onClick={() => { void navigator.clipboard?.writeText(location.href).then(() => setNotice({kind:"success",text:"اتنسخ رابط الموقع."})).catch(() => setNotice({kind:"info",text:"انسخ رابط الصفحة من شريط المتصفح."})); }}>↗ مشاركة</button></div>
           </article>)}</div>}
       </section>}
 
