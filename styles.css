@@ -157,3 +157,44 @@ body{background:radial-gradient(ellipse at 50% -15%,#302515 0,transparent 42%),#
 .v10-live-features small{font-size:8px;line-height:1.6;color:#a99b81}
 .v10-live-note{margin-top:13px;padding:10px 12px;border-right:2px solid #9c783f;background:#17130e;color:#b9a98a;font-size:9px;line-height:1.8}
 @media(max-width:360px){.v10-live-hero{padding:18px 12px}.v10-live-hero h2{font-size:19px}.v10-live-hero-copy{max-width:66%}.v10-live-ring{width:70px;height:70px}.v10-live-features{gap:5px}}
+
+
+/* V10 moments feed and post composer */
+.v10-moments-page{padding-bottom:30px}
+.v10-moments-heading{margin-bottom:16px}
+.v10-moments-heading h1{color:#f3dfb7}
+.v10-moment-composer{padding:16px;border:1px solid #70552d;border-radius:19px;background:linear-gradient(145deg,#211b12,#141216);box-shadow:0 12px 28px #0005}
+.v10-composer-head{position:relative;display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.v10-composer-head>div:nth-child(2){display:grid;gap:4px}
+.v10-composer-head b{font-size:12px;color:#f3e5c8}
+.v10-composer-head small{font-size:9px;color:#b9a47e}
+.v10-composer-mark{margin-right:auto;color:#d9b86f;font-size:19px}
+.v10-moment-composer textarea{display:block;width:100%;min-height:88px;resize:vertical;padding:13px;border:1px solid #493a26;border-radius:13px;outline:none;background:#100f10;color:#f3ead8;font:inherit;font-size:12px;line-height:1.9}
+.v10-moment-composer textarea:focus{border-color:#b18a4a;box-shadow:0 0 0 2px #c49c4a1c}
+.v10-moment-composer textarea::placeholder{color:#8e816c}
+.v10-composer-footer{display:flex;align-items:center;gap:10px;margin-top:13px;flex-wrap:wrap}
+.v10-file-pick{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 10px;border:1px solid #67502d;border-radius:11px;color:#e5c986;background:#19150f;font-size:10px;cursor:pointer}
+.v10-file-pick span{font-size:16px}
+.v10-char-count{margin-inline-start:auto;color:#93856d;font-size:9px}
+.v10-publish-button{min-height:42px;padding:0 13px;border-radius:11px;font-size:10px}
+.v10-publish-button:disabled{opacity:.48;cursor:not-allowed}
+.v10-moments-feed-heading{display:flex;align-items:end;justify-content:space-between;margin:24px 2px 13px}
+.v10-moments-feed-heading h2{margin:4px 0 0;color:#f0dfbd;font-size:17px}
+.v10-feed-symbol{font-size:23px;color:#c9a45d}
+.v10-moments-empty{border:1px dashed #66502f;border-radius:18px;background:#17130f}
+.v10-moments-feed{display:grid;gap:14px}
+.v10-moment-card{overflow:hidden;padding:15px;border:1px solid #514027;border-radius:18px;background:linear-gradient(155deg,#1e1a14,#121114);box-shadow:0 8px 22px #0004}
+.v10-moment-author{display:flex;align-items:center;gap:10px}
+.v10-moment-author>div:nth-child(2){display:grid;gap:4px;min-width:0}
+.v10-moment-author b{font-size:11px;color:#f0dfbf}
+.v10-moment-author small{font-size:9px;color:#a99a7e}
+.v10-moment-author .more-button{margin-inline-start:auto;color:#c8ad77}
+.v10-moment-text{margin:14px 0;color:#e8ddc9;font-size:12px;line-height:2;white-space:pre-wrap;overflow-wrap:anywhere}
+.v10-moment-media{display:block;width:100%;max-height:440px;object-fit:contain;border-radius:13px;background:#09090a}
+.v10-moment-counts{display:flex;justify-content:space-between;align-items:center;margin-top:13px;padding:0 2px 10px;border-bottom:1px solid #443723;color:#c8b58e;font-size:10px}
+.v10-moment-counts button{border:0;background:none;color:#d8b96f;font:inherit;cursor:pointer}
+.v10-moment-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:9px}
+.v10-moment-actions button{min-height:40px;border:1px solid transparent;border-radius:10px;background:#201a12;color:#d8c8a8;font-size:10px;cursor:pointer}
+.v10-moment-actions button:hover,.v10-moment-actions button:focus-visible{border-color:#8b6c39;background:#2a2115}
+.v10-moment-actions button.liked{color:#efb0a4;background:#2b1717}
+@media(max-width:380px){.v10-moment-composer{padding:12px}.v10-composer-footer{gap:7px}.v10-publish-button{padding:0 9px}.v10-moment-card{padding:12px}}
