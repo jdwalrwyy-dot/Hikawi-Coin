@@ -213,11 +213,16 @@ export default function App() {
     if (!user) return;
     try {
       const room = await createLiveRoom({ name: roomName, description: roomDescription, category: roomCategory, user });
-      setRooms((current) => [room, ...current]);
+      setRooms((current) => [room, ...current.filter((item) => item.id !== room.id)]);
       setSelectedRoom(room);
       setCreateRoomOpen(false);
       setRoomName(""); setRoomDescription("");
-      setNotice({ kind: "success", text: "اتعملت الغرفة واتسجلت في قاعدة البيانات." });
+      try {
+        await joinLiveRoom(room.id, user);
+        setNotice({ kind: "success", text: "اتعملت الغرفة واتسجلت عضويتك فيها." });
+      } catch (membershipError) {
+        setNotice({ kind: "error", text: "الغرفة اتعملت، لكن تعذر تسجيل عضويتك فيها: " + friendlyError(membershipError) });
+      }
     } catch (error) { setNotice({ kind: "error", text: friendlyError(error) }); }
   }
 
