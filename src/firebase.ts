@@ -155,15 +155,12 @@ export async function claimMicSeat(roomId: string, seatNumber: number, user: Use
     const currentSeat = memberSnapshot.data().micSeat as number | undefined;
     if (currentSeat === seatNumber && targetSeatSnapshot.exists()) return;
 
-    let previousSeatRef: ReturnType<typeof doc> | null = null;
-    let previousSeatSnapshot: Awaited<ReturnType<typeof transaction.get>> | null = null;
     if (Number.isInteger(currentSeat) && currentSeat! >= 1 && currentSeat! <= 27 && currentSeat !== seatNumber) {
-      previousSeatRef = doc(db, "rooms", roomId, "micSeats", String(currentSeat));
-      previousSeatSnapshot = await transaction.get(previousSeatRef);
-    }
-
-    if (previousSeatRef && previousSeatSnapshot?.exists() && previousSeatSnapshot.data().uid === user.uid) {
-      transaction.delete(previousSeatRef);
+      const previousSeatRef = doc(db, "rooms", roomId, "micSeats", String(currentSeat));
+      const previousSeatSnapshot = await transaction.get(previousSeatRef);
+      if (previousSeatSnapshot.exists() && previousSeatSnapshot.data().uid === user.uid) {
+        transaction.delete(previousSeatRef);
+      }
     }
     transaction.set(targetSeatRef, {
       seatNumber,
