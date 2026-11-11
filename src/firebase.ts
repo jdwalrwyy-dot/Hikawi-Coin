@@ -1,7 +1,7 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { getAuth, type User } from "firebase/auth";
 import {
-  addDoc, collection, doc, getDoc, getFirestore, limit, onSnapshot,
+  addDoc, collection, deleteField, doc, getDoc, getFirestore, limit, onSnapshot,
   orderBy, query, runTransaction, serverTimestamp, setDoc, where,
   type Unsubscribe,
 } from "firebase/firestore";
@@ -107,6 +107,92 @@ export async function joinLiveRoom(roomId: string, user: User): Promise<void> {
       role: roomSnapshot.data().ownerUid === user.uid ? "owner" : "member",
     });
   }
+}
+
+export interface MicSeatRecord {
+  id: string;
+  seatNumber: number;
+  uid: string;
+  displayName: string;
+  photoURL: string | null;
+}
+
+export function subscribeMicSeats(
+  roomId: string,
+  onSeats: (seats: MicSeatRecord[]) => void,
+  onError: (error: Error) => void,
+): Unsubscribe {
+  if (!db) throw new Error("قاعدة البيانات غير متاحة.");
+  return onSnapshot(
+    collection(db, "rooms", roomId, "micSeats"),
+    (snapshot) => onSeats(snapshot.docs.map((item) => ({
+      id: item.id,
+      ...item.data(),
+    } as MicSeatRecord))),
+    onError,
+  );
+}
+
+export async function claimMicSeat(roomId: string, seatNumber: number, user: User): Promise<void> {
+  if (!db) throw new Error("قاعدة البيانات غير متاحة.");
+  if (!Number.isInteger(seatNumber) || seatNumber < 1 || seatNumber > 27) {
+    throw new Error("اختار مقعد مايك صحيح.");
+  }
+
+  const memberRef = doc(db, "rooms", roomId, "members", user.uid);
+  const targetSeatRef = doc(db, "rooms", roomId, "micSeats", String(seatNumber));
+
+  await runTransaction(db, async (transaction) => {
+    const [memberSnapshot, targetSeatSnapshot] = await Promise.all([
+      transaction.get(memberRef),
+      transaction.get(targetSeatRef),
+    ]);
+    if (!memberSnapshot.exists()) throw new Error("لازم تدخل الغرفة الأول.");
+    if (targetSeatSnapshot.exists() && targetSeatSnapshot.data().uid !== user.uid) {
+      throw new Error("المايك ده مشغول. اختار مقعد تاني.");
+    }
+
+    const currentSeat = memberSnapshot.data().micSeat as number | undefined;
+    if (currentSeat === seatNumber && targetSeatSnapshot.exists()) return;
+
+    let previousSeatRef: ReturnType<typeof doc> | null = null;
+    let previousSeatSnapshot: Awaited<ReturnType<typeof transaction.get>> | null = null;
+    if (Number.isInteger(currentSeat) && currentSeat! >= 1 && currentSeat! <= 27 && currentSeat !== seatNumber) {
+      previousSeatRef = doc(db, "rooms", roomId, "micSeats", String(currentSeat));
+      previousSeatSnapshot = await transaction.get(previousSeatRef);
+    }
+
+    if (previousSeatRef && previousSeatSnapshot?.exists() && previousSeatSnapshot.data().uid === user.uid) {
+      transaction.delete(previousSeatRef);
+    }
+    transaction.set(targetSeatRef, {
+      seatNumber,
+      uid: user.uid,
+      displayName: user.displayName || "عضو حكاوي",
+      photoURL: user.photoURL || null,
+      updatedAt: serverTimestamp(),
+    });
+    transaction.set(memberRef, { micSeat: seatNumber }, { merge: true });
+  });
+}
+
+export async function releaseMicSeat(roomId: string, user: User): Promise<void> {
+  if (!db) throw new Error("قاعدة البيانات غير متاحة.");
+  const memberRef = doc(db, "rooms", roomId, "members", user.uid);
+
+  await runTransaction(db, async (transaction) => {
+    const memberSnapshot = await transaction.get(memberRef);
+    if (!memberSnapshot.exists()) return;
+    const currentSeat = memberSnapshot.data().micSeat as number | undefined;
+    if (!Number.isInteger(currentSeat) || currentSeat! < 1 || currentSeat! > 27) return;
+
+    const seatRef = doc(db, "rooms", roomId, "micSeats", String(currentSeat));
+    const seatSnapshot = await transaction.get(seatRef);
+    if (seatSnapshot.exists() && seatSnapshot.data().uid === user.uid) {
+      transaction.delete(seatRef);
+    }
+    transaction.set(memberRef, { micSeat: deleteField() }, { merge: true });
+  });
 }
 
 export interface MomentRecord {
