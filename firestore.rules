@@ -94,10 +94,54 @@ service cloud.firestore {
         allow update: if signedIn()
           && request.auth.uid == uid
           && resource.data.uid == uid
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','joinedAt']);
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','joinedAt','micSeat'])
+          && (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['micSeat'])
+            || (
+              request.resource.data.keys().hasAny(['micSeat'])
+              && request.resource.data.micSeat is int
+              && request.resource.data.micSeat >= 1
+              && request.resource.data.micSeat <= 27
+              && existsAfter(/databases/$(database)/documents/rooms/$(roomId)/micSeats/$(request.resource.data.micSeat))
+              && getAfter(/databases/$(database)/documents/rooms/$(roomId)/micSeats/$(request.resource.data.micSeat)).data.uid == uid
+            )
+            || (
+              !request.resource.data.keys().hasAny(['micSeat'])
+              && (!resource.data.keys().hasAny(['micSeat'])
+                || !existsAfter(/databases/$(database)/documents/rooms/$(roomId)/micSeats/$(resource.data.micSeat)))
+            )
+          );
         allow delete: if signedIn() && (request.auth.uid == uid
           || get(/databases/$(database)/documents/rooms/$(roomId)).data.ownerUid == request.auth.uid
           || isOwner());
+      }
+
+      match /micSeats/{seatId} {
+        function validSeatNumber(number) {
+          return number is int && number >= 1 && number <= 27;
+        }
+        function matchingMemberAfter(number) {
+          return existsAfter(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid))
+            && getAfter(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid)).data.micSeat == number;
+        }
+        allow read: if signedIn()
+          && get(/databases/$(database)/documents/rooms/$(roomId)).data.visibility == 'public';
+        allow create: if signedIn()
+          && validSeatNumber(request.resource.data.seatNumber)
+          && request.resource.data.uid == request.auth.uid
+          && matchingMemberAfter(request.resource.data.seatNumber);
+        allow update: if signedIn()
+          && resource.data.uid == request.auth.uid
+          && request.resource.data.uid == request.auth.uid
+          && validSeatNumber(request.resource.data.seatNumber)
+          && matchingMemberAfter(request.resource.data.seatNumber);
+        allow delete: if signedIn()
+          && resource.data.uid == request.auth.uid
+          && existsAfter(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid))
+          && (
+            !getAfter(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid)).data.keys().hasAny(['micSeat'])
+            || getAfter(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid)).data.micSeat != resource.data.seatNumber
+          );
       }
     }
 
