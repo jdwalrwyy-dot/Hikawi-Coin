@@ -9,6 +9,8 @@ import {
   auth, db, isFirebaseConfigured, saveUserProfile, subscribePublicRooms,
   createLiveRoom, joinLiveRoom, subscribeMoments, createMoment, toggleMomentLike,
   hasLikedMoment, subscribeMomentComments, addMomentComment,
+  subscribeMicSeats, claimMicSeat, releaseMicSeat,
+
 } from "./firebase";
 
 type Tab = "home" | "live" | "moments" | "games" | "messages" | "profile";
@@ -80,6 +82,9 @@ export default function App() {
   const [roomDescription, setRoomDescription] = useState("");
   const [roomCategory, setRoomCategory] = useState("دردشة");
   const [selectedRoom, setSelectedRoom] = useState<LiveRoomRecord | null>(null);
+  const [micSeats, setMicSeats] = useState<import('./firebase').MicSeatRecord[]>([]);
+  const [micBusy, setMicBusy] = useState(false);
+  const myMicSeat = micSeats.find((seat) => seat.uid === user?.uid)?.seatNumber ?? null;
   const [commentMoment, setCommentMoment] = useState<MomentRecord | null>(null);
   const [comments, setComments] = useState<MomentComment[]>([]);
   const [commentText, setCommentText] = useState("");
@@ -115,6 +120,15 @@ export default function App() {
       .catch(() => undefined);
     return () => { active = false; };
   }, [user, moments]);
+
+  useEffect(() => {
+    if (!selectedRoom) { setMicSeats([]); return; }
+    return subscribeMicSeats(
+      selectedRoom.id,
+      setMicSeats,
+      (error) => setNotice({ kind: "error", text: friendlyError(error) }),
+    );
+  }, [selectedRoom?.id]);
 
   useEffect(() => {
     if (!commentMoment) { setComments([]); return; }
@@ -234,6 +248,45 @@ export default function App() {
     } catch (error) { setNotice({ kind: "error", text: friendlyError(error) }); }
   }
 
+  async function chooseMicSeat(seatNumber: number) {
+    if (!user || !selectedRoom || micBusy) return;
+    setMicBusy(true);
+    try {
+      await claimMicSeat(selectedRoom.id, seatNumber, user);
+      setNotice({ kind: "success", text: `طلعت على المايك رقم ${seatNumber}.` });
+    } catch (error) {
+      setNotice({ kind: "error", text: friendlyError(error) });
+    } finally {
+      setMicBusy(false);
+    }
+  }
+
+  async function goDownFromMic() {
+    if (!user || !selectedRoom || micBusy || myMicSeat === null) return;
+    setMicBusy(true);
+    try {
+      await releaseMicSeat(selectedRoom.id, user);
+      setNotice({ kind: "success", text: "نزلت من المايك." });
+    } catch (error) {
+      setNotice({ kind: "error", text: friendlyError(error) });
+    } finally {
+      setMicBusy(false);
+    }
+  }
+
+  async function leaveRoom() {
+    if (!user || !selectedRoom) return;
+    setMicBusy(true);
+    try {
+      await releaseMicSeat(selectedRoom.id, user);
+      setSelectedRoom(null);
+    } catch (error) {
+      setNotice({ kind: "error", text: friendlyError(error) });
+    } finally {
+      setMicBusy(false);
+    }
+  }
+
   if (!authReady) return <div className="loading-screen"><div className="brand-mark">ح</div><strong>حكاوي كوين</strong><span className="loader" /><small>بنجهز مكانك...</small></div>;
 
   if (!user) {
@@ -279,9 +332,32 @@ export default function App() {
       <main className="room-screen" dir="rtl" lang="ar">
         <header className="subpage-header"><button className="round-button" onClick={() => setSelectedRoom(null)}>←</button><div><b>{selectedRoom.name}</b><small>{selectedRoom.category} · غرفة صوتية</small></div><span className="live-chip">غرفة عامة</span></header>
         <section className="room-stage"><span className="kicker">أهلاً بيك في</span><h1>{selectedRoom.name}</h1><p>{selectedRoom.description || "لمة حلوة وأصحاب جداد."}</p><div className="room-owner"><Avatar user={user} /><span><b>{selectedRoom.ownerName}</b><small>صاحب الغرفة</small></span></div></section>
-        <section className="mic-panel"><div className="section-title"><div><span className="kicker">مجلس حكاوي</span><h2>مقاعد المايك</h2></div><span className="subtle">27 مقعد</span></div><div className="mic-grid">{Array.from({ length: 27 }, (_, index) => <div className={index === 0 ? "mic-seat occupied" : "mic-seat"} key={index}><span>{index === 0 ? "🎙️" : "＋"}</span><small>{index === 0 ? "أنت" : "متاح"}</small></div>)}</div></section>
-        <div className="room-warning">تم تسجيل دخولك للغرفة في قاعدة البيانات. الصوت المباشر ومقاعد المايك تحتاج ربط مزود RTC آمن قبل تشغيلها.</div>
-        <div className="room-controls"><button disabled className="primary-button">🎙️ المايك غير متاح حاليًا</button><button className="ghost-button" onClick={() => setSelectedRoom(null)}>مغادرة الغرفة</button></div>
+        <section className="mic-panel">
+          <div className="section-title"><div><span className="kicker">اختار مكانك</span><h2>مقاعد المايك</h2></div><span className="subtle">27 مقعد</span></div>
+          <p className="mic-help">اضغط على أي مقعد متاح للصعود عليه. لو اخترت مقعدًا تانيًا هتنتقل له مباشرة.</p>
+          <div className="mic-grid">{Array.from({ length: 27 }, (_, index) => {
+            const seatNumber = index + 1;
+            const seat = micSeats.find((item) => item.seatNumber === seatNumber);
+            const mine = seat?.uid === user.uid;
+            return <button
+              type="button"
+              className={seat ? (mine ? "mic-seat occupied mine" : "mic-seat occupied") : "mic-seat"}
+              key={seatNumber}
+              disabled={micBusy || (!!seat && !mine)}
+              onClick={() => void chooseMicSeat(seatNumber)}
+              aria-label={seat ? `المايك ${seatNumber} مع ${seat.displayName}` : `الصعود على المايك ${seatNumber}`}
+            >
+              <span className="mic-seat-avatar">{seat?.photoURL ? <img src={seat.photoURL} alt="" /> : (seat ? (seat.displayName || "ع").slice(0, 1) : "＋")}</span>
+              <small>{seat ? (mine ? "أنت" : seat.displayName || "مشغول") : `مايك ${seatNumber}`}</small>
+            </button>;
+          })}</div>
+        </section>
+        <div className="room-controls">
+          <button className="primary-button" onClick={() => void goDownFromMic()} disabled={micBusy || myMicSeat === null}>
+            {micBusy ? "جاري التنفيذ..." : myMicSeat === null ? "أنت مش على المايك" : `↓ نزول من المايك رقم ${myMicSeat}`}
+          </button>
+          <button className="ghost-button" onClick={() => void leaveRoom()} disabled={micBusy}>مغادرة الغرفة</button>
+        </div>
         {notice && <div className={`toast toast-${notice.kind}`} role="status">{notice.text}<button onClick={() => setNotice(null)}>×</button></div>}
       </main>
     );
