@@ -158,7 +158,7 @@ export async function claimMicSeat(roomId: string, seatNumber: number, user: Use
     if (Number.isInteger(currentSeat) && currentSeat! >= 1 && currentSeat! <= 27 && currentSeat !== seatNumber) {
       const previousSeatRef = doc(db, "rooms", roomId, "micSeats", String(currentSeat));
       const previousSeatSnapshot = await transaction.get(previousSeatRef);
-      if (previousSeatSnapshot.exists() && previousSeatSnapshot.data().uid === user.uid) {
+      if (previousSeatSnapshot.exists() && (previousSeatSnapshot.data() as { uid?: string }).uid === user.uid) {
         transaction.delete(previousSeatRef);
       }
     }
